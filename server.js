@@ -48,7 +48,7 @@ setInterval(() => {
   dirty = false;
   const msg = JSON.stringify({ t: 'peers', list: [...players].map(([id, p]) => ({ id, presence: p.presence })) });
   for (const p of players.values()) if (p.ws.readyState === 1) p.ws.send(msg);
-}, 50);
+}, 100);
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => console.log('Arène : http://localhost:' + PORT));

@@ -36,7 +36,7 @@ col(me,s.r);
 if(M.d&&me.cd<=0&&me.ro<=0){me.cd=s.cd;const as=[];for(let i=0;i<s.pel;i++)as.push(me.a+(Math.random()-.5)*s.spr*2);shoot(me.x,me.y,as,me.c,true,myPeer||'me',0);snd('shot',{x:me.x,y:me.y,as,c:me.c,g:0})}
 if(AB&&me.ab<=0){me.ab=s.acd;if(me.c==0){me.ro=.22;me.rx=dx?dx/l:Math.cos(me.a);me.ry=dx||dy?dy/l:Math.sin(me.a)}else if(me.c==1)me.iv=3.5;else if(me.c==2)me.sh=2.5;else{shoot(me.x,me.y,[me.a],3,true,myPeer||'me',1);snd('shot',{x:me.x,y:me.y,as:[me.a],c:3,g:1})}}
 AB=0;cam.x=Math.max(0,Math.min(MW-W,me.x-W/2));cam.y=Math.max(0,Math.min(MH-H,me.y-H/2))}
-if((pt+=dt)>.066){pt=0;pres()}
+if((pt+=dt)>.1){pt=0;pres()}
 const nr=Object.keys(R).length;if(nr)bots=[];else while(bots.length<2){const p=SP[Math.random()*8|0];bots.push({x:p[0],y:p[1],hp:60,a:0,cd:1,fl:0,dt:0})}
 for(const o of bots){if(o.hp<=0){if(o.dt-=dt,o.dt<=0){const p=SP[Math.random()*8|0];Object.assign(o,{x:p[0],y:p[1],hp:60})}continue}
 o.fl-=dt;const d=Math.hypot(me.x-o.x,me.y-o.y);o.a=Math.atan2(me.y-o.y,me.x-o.x);const m=d>280?1:-.3;o.x+=Math.cos(o.a+Math.sin(tt*2)*.5)*90*m*dt;o.y+=Math.sin(o.a+Math.sin(tt*2)*.5)*90*m*dt;col(o,14);
@@ -47,7 +47,7 @@ if(!dead&&!b.gr){if(!b.mine&&me.al&&me.ro<=0&&Math.hypot(b.x-me.x,b.y-me.y)<CH[m
 if(b.mine)for(const o of bots)if(o.hp>0&&Math.hypot(b.x-o.x,b.y-o.y)<15){hitBot(o,b.d);dead=true;break}}
 if(dead){b.x-=b.vx*dt;b.y-=b.vy*dt;if(b.gr)boom(b);else ptc(b.x,b.y,'#ffd');b.l=-1}}
 Bu=Bu.filter(b=>b.l>0);for(const q of Pa){q.x+=q.vx*dt;q.y+=q.vy*dt;q.l-=dt}Pa=Pa.filter(q=>q.l>0);
-for(const k in R){const o=R[k];o.x+=(o.tx-o.x)*.3;o.y+=(o.ty-o.y)*.3}
+for(const k in R){const o=R[k];o.x+=(o.tx-o.x)*.2;o.y+=(o.ty-o.y)*.2}
 feed.forEach(f=>f.l-=dt);feed=feed.filter(f=>f.l>0)}
 function pl(x,y,a,ci,hp,tg,iv,sh,isMe,fl){const s=CH[ci];g.save();g.translate(x-cam.x,y-cam.y);g.globalAlpha=iv?(isMe?.35:0):1;if(!g.globalAlpha){g.restore();return}
 g.fillStyle='rgba(0,0,0,.35)';g.beginPath();g.ellipse(4,6,s.r,s.r*.85,0,0,7);g.fill();g.rotate(a);g.fillStyle='#1b1f2a';g.fillRect(s.r-4,-3.5,s.L,7);
