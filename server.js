@@ -33,7 +33,7 @@ wss.on('connection', (ws, req) => {
     if (m.t === 'presence' && m.d && typeof m.d === 'object') {
       const d = m.d;
       me.presence = { x: num(d.x), y: num(d.y), a: num(d.a), hp: num(d.hp), c: num(d.c) & 15, s: num(d.s) & 7, b: Math.min(100, Math.max(0, num(d.b))), k: num(d.k),
-        al: d.al ? 1 : 0, iv: d.iv ? 1 : 0, sh: d.sh ? 1 : 0, v: d.v == null ? null : num(d.v) & 3, m: num(d.m) & 7, n: String(d.n || '').slice(0, 14) };
+        al: d.al ? 1 : 0, iv: d.iv ? 1 : 0, sh: d.sh ? 1 : 0, v: d.v == null ? null : num(d.v) & 3, m: num(d.m) & 7, n: String(d.n || '').slice(0, 14), pk: num(d.pk) & 15, rv: d.rv ? 1 : 0 };
       dirty = true;
     } else if (m.t === 'admin_login') {
       me.tries = (me.tries || 0) + 1;
@@ -43,7 +43,7 @@ wss.on('connection', (ws, req) => {
     } else if (m.t === 'adm' && me.admin && m.d) {
       const tg = players.get(String(m.d.to));
       if (tg && tg.ws.readyState === 1) tg.ws.send(JSON.stringify({ t: 'adm', d: { act: String(m.d.act).slice(0, 8), v: num(m.d.v) } }));
-    } else if (['shot', 'kill', 'dep', 'act', 'flash', 'plate', 'orb'].includes(m.t)) {
+    } else if (['shot', 'kill', 'dep', 'act', 'flash', 'plate', 'orb', 'rm'].includes(m.t)) {
       if (Date.now() - me.since > 1000) { me.since = Date.now(); me.shots = 0; }
       if (++me.shots > 40) return; // anti-spam
       const out = JSON.stringify({ t: m.t, d: m.d, from: id });
