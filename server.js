@@ -20,7 +20,8 @@ const players = new Map();
 let counter = 0, dirty = false;
 const num = (v) => (Number.isFinite(+v) ? +v : 0);
 
-wss.on('connection', (ws) => {
+wss.on('connection', (ws, req) => {
+  req.socket.setNoDelay(true);
   const id = 'p' + (++counter).toString(36);
   const me = { ws, presence: {}, shots: 0, since: Date.now() };
   players.set(id, me);
@@ -30,7 +31,7 @@ wss.on('connection', (ws) => {
     if (!m || typeof m.t !== 'string') return;
     if (m.t === 'presence' && m.d && typeof m.d === 'object') {
       const d = m.d;
-      me.presence = { x: num(d.x), y: num(d.y), a: num(d.a), hp: num(d.hp), c: num(d.c) & 3, k: num(d.k),
+      me.presence = { x: num(d.x), y: num(d.y), a: num(d.a), hp: num(d.hp), c: num(d.c) & 15, s: num(d.s) & 7, k: num(d.k),
         al: d.al ? 1 : 0, iv: d.iv ? 1 : 0, sh: d.sh ? 1 : 0, v: d.v == null ? null : num(d.v) & 3, m: num(d.m) & 3 };
       dirty = true;
     } else if (m.t === 'shot' || m.t === 'kill') {
@@ -48,7 +49,7 @@ setInterval(() => {
   dirty = false;
   const msg = JSON.stringify({ t: 'peers', list: [...players].map(([id, p]) => ({ id, presence: p.presence })) });
   for (const p of players.values()) if (p.ws.readyState === 1) p.ws.send(msg);
-}, 100);
+}, 33);
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => console.log('Arène : http://localhost:' + PORT));
