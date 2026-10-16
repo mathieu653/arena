@@ -94,7 +94,7 @@ io.on('connection', (socket) => {
     socket.on('disconnect', () => {
         Object.keys(lobbies).forEach(m => {
             if (lobbies[m].players.has(socket.id)) {
-                lobbies.special.players.delete(socket.id);
+                lobbies[m].players.delete(socket.id);
             }
         });
         broadcastPlayerCounts();
