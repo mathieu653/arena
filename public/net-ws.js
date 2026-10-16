@@ -15,6 +15,7 @@
       else if (m.t === 'admin_ok') netAdmin(1);
       else if (m.t === 'admin_no') netAdmin(0);
       else if (m.t === 'adm') netAdm(m.d);
+      else if (m.t === 'sync') offset = m.time - Date.now();
       else if (m.t === 'lb') netLB(m.list);
       else netEvent(m.t, m.d, m.from);
     };
