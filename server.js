@@ -40,7 +40,7 @@ wss.on('connection', (ws, req) => {
     if (m.t === 'presence' && m.d && typeof m.d === 'object') {
       const d = m.d;
       me.presence = { x: num(d.x), y: num(d.y), a: num(d.a), hp: num(d.hp), c: num(d.c) & 15, s: num(d.s) & 7, b: Math.min(100, Math.max(0, num(d.b))), k: num(d.k),
-        al: d.al ? 1 : 0, iv: d.iv ? 1 : 0, sh: d.sh ? 1 : 0, v: d.v == null ? null : num(d.v) & 3, m: num(d.m) & 7, n: String(d.n || '').slice(0, 14), pk: num(d.pk) & 15, rv: d.rv ? 1 : 0, md: num(d.md) & 1, pl: d.pl ? 1 : 0, dd: num(d.dd) & 255 };
+        al: d.al ? 1 : 0, iv: d.iv ? 1 : 0, sh: d.sh ? 1 : 0, v: d.v == null ? null : num(d.v) & 3, m: num(d.m) & 7, n: String(d.n || '').slice(0, 14), pk: num(d.pk) & 15, rv: d.rv ? 1 : 0, md: num(d.md) & 1, pl: d.pl ? 1 : 0, dd: num(d.dd) & 255, rk: num(d.rk) & 7 };
       dirty = true;
     } else if (m.t === 'admin_login') {
       me.tries = (me.tries || 0) + 1;
