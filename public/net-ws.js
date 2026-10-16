@@ -15,8 +15,10 @@
       else if (m.t === 'admin_ok') netAdmin(1);
       else if (m.t === 'admin_no') netAdmin(0);
       else if (m.t === 'adm') netAdm(m.d);
+      else if (m.t === 'lb') netLB(m.list);
       else netEvent(m.t, m.d, m.from);
     };
+    ws.onopen = () => net.send('lb_get');
     ws.onclose = () => setTimeout(connect, 2000);
   }
   connect();

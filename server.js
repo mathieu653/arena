@@ -19,7 +19,14 @@ const wss = new WebSocketServer({ server, maxPayload: 2048 });
 const players = new Map();
 let counter = 0, dirty = false;
 const num = (v) => (Number.isFinite(+v) ? +v : 0);
-const ADMIN = process.env.ADMIN_KEY || ''; // définis ADMIN_KEY dans les variables d'environnement de Render
+const ADMIN = process.env.ADMIN_KEY || '';
+// Classement Radiant (top 10) : en mémoire + sauvegardé dans leaderboard.json
+// (sur l'offre gratuite de Render, le disque est effacé à chaque redéploiement)
+const LBFILE = path.join(__dirname, 'leaderboard.json');
+let LB = {}, lbDirty = false;
+try { LB = JSON.parse(fs.readFileSync(LBFILE, 'utf8')); } catch {}
+setInterval(() => { if (lbDirty) { lbDirty = false; try { fs.writeFileSync(LBFILE, JSON.stringify(LB)); } catch {} } }, 30000);
+ // définis ADMIN_KEY dans les variables d'environnement de Render
 
 wss.on('connection', (ws, req) => {
   req.socket.setNoDelay(true);
@@ -33,7 +40,7 @@ wss.on('connection', (ws, req) => {
     if (m.t === 'presence' && m.d && typeof m.d === 'object') {
       const d = m.d;
       me.presence = { x: num(d.x), y: num(d.y), a: num(d.a), hp: num(d.hp), c: num(d.c) & 15, s: num(d.s) & 7, b: Math.min(100, Math.max(0, num(d.b))), k: num(d.k),
-        al: d.al ? 1 : 0, iv: d.iv ? 1 : 0, sh: d.sh ? 1 : 0, v: d.v == null ? null : num(d.v) & 3, m: num(d.m) & 7, n: String(d.n || '').slice(0, 14), pk: num(d.pk) & 15, rv: d.rv ? 1 : 0 };
+        al: d.al ? 1 : 0, iv: d.iv ? 1 : 0, sh: d.sh ? 1 : 0, v: d.v == null ? null : num(d.v) & 3, m: num(d.m) & 7, n: String(d.n || '').slice(0, 14), pk: num(d.pk) & 15, rv: d.rv ? 1 : 0, md: num(d.md) & 1, pl: d.pl ? 1 : 0, dd: num(d.dd) & 255 };
       dirty = true;
     } else if (m.t === 'admin_login') {
       me.tries = (me.tries || 0) + 1;
@@ -43,7 +50,19 @@ wss.on('connection', (ws, req) => {
     } else if (m.t === 'adm' && me.admin && m.d) {
       const tg = players.get(String(m.d.to));
       if (tg && tg.ws.readyState === 1) tg.ws.send(JSON.stringify({ t: 'adm', d: { act: String(m.d.act).slice(0, 8), v: num(m.d.v) } }));
+    } else if (m.t === 'lb_post' && m.d) {
+      const uid = String(m.d.uid || '').slice(0, 24).replace(/[^\w-]/g, '');
+      if (uid && Date.now() - (me.lbT || 0) > 3000) {
+        me.lbT = Date.now();
+        const rr = Math.max(0, Math.min(9999, num(m.d.rr))), e = LB[uid] || { best: 0 };
+        LB[uid] = { name: String(m.d.name || '?').slice(0, 14), rr, best: Math.max(e.best || 0, rr), t: Date.now() };
+        lbDirty = true;
+      }
+    } else if (m.t === 'lb_get') {
+      const list = Object.values(LB).sort((a, b) => b.best - a.best || b.t - a.t).slice(0, 10).map((e) => ({ n: e.name, r: e.rr, b: e.best }));
+      ws.send(JSON.stringify({ t: 'lb', list }));
     } else if (['shot', 'kill', 'dep', 'act', 'flash', 'plate', 'orb', 'rm'].includes(m.t)) {
+      if (m.d && m.d.gd && !me.admin) m.d.gd = 0; // le laser géant est réservé à l'admin
       if (Date.now() - me.since > 1000) { me.since = Date.now(); me.shots = 0; }
       if (++me.shots > 40) return; // anti-spam
       const out = JSON.stringify({ t: m.t, d: m.d, from: id });
