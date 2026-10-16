@@ -1,23 +1,25 @@
 // Connexion WebSocket
 const socket = io();
 
-// Configuration du Canvas et du rendu graphique
-const canvas = document.getElementById('gameCanvas') || document.querySelector('canvas') || document.createElement('canvas');
-if (!canvas.id) {
-    canvas.id = 'gameCanvas';
+// Initialisation du Canvas et du contexte graphique 2D
+const canvas = document.getElementById('gameCanvas') || document.querySelector('canvas');
+const ctx = canvas ? canvas.getContext('2d') : null;
+
+// Gestion du redimensionnement de l'écran
+if (canvas) {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
-    document.body.appendChild(canvas);
+    window.addEventListener('resize', () => {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+    });
 }
-const ctx = canvas.getContext('2d');
 
-// Variables d'état du jeu
-let currentMode = null;
-let players = new Map();
+// État local du joueur
 let player = {
-    x: canvas.width / 2, 
-    y: canvas.height / 2,
-    coins: 0, 
+    x: canvas ? canvas.width / 2 : 100,
+    y: canvas ? canvas.height / 2 : 100,
+    coins: 0,
     xp: 0,
     character: 'default',
     skin: 'default',
@@ -28,155 +30,141 @@ let player = {
     rank: 'Bronze'
 };
 
-// --- 1. Gestion des Lobbys & Compteurs ---
+let currentMode = null;
+let bossData = { alive: false, health: 15000, maxHealth: 15000 };
+
+// --- 1. SÉLECTION DES LOBBYS & COMPTEURS ---
 function selectLobby(mode) {
     currentMode = mode;
     socket.emit('joinMode', mode);
     
-    // Gestion de l'affichage UI des menus et du jeu
-    let menu = document.getElementById('lobby-menu') || document.getElementById('menu');
+    // Masquer le menu principal et afficher l'interface de jeu
+    const menu = document.getElementById('lobby-menu') || document.getElementById('menu');
     if (menu) menu.style.display = 'none';
-    
-    canvas.style.display = 'block';
 }
 
 socket.on('playerCounts', (counts) => {
-    updateCountDisplay('count-classic', counts.classic);
-    updateCountDisplay('count-ranked', counts.ranked);
-    updateCountDisplay('count-special', counts.special);
+    updateCount('count-classic', counts.classic);
+    updateCount('count-ranked', counts.ranked);
+    updateCount('count-special', counts.special);
 });
 
-function updateCountDisplay(elementId, count) {
-    let el = document.getElementById(elementId);
-    if (el) {
-        el.innerText = `En ligne : ${count}`;
-    }
+function updateCount(elementId, count) {
+    const el = document.getElementById(elementId);
+    if (el) el.innerText = `En ligne : ${count}`;
 }
 
-// --- 2. Mode Spécial & Boss (Tong Tong Sahur Géant) ---
-let bossData = { alive: false, health: 15000, maxHealth: 15000 };
-
+// --- 2. MODE SPÉCIAL & BOSS (TONG TONG SAHUR GÉANT) ---
 socket.on('bossState', (data) => {
     bossData = data;
-    renderBossHUD();
+    updateBossHUD();
 });
 
 socket.on('bossSpawned', (data) => {
     bossData.alive = true;
     bossData.health = data.health;
     bossData.maxHealth = data.maxHealth;
-    alert("Le Tong Tong Sahur géant est apparu dans le mode spécial !");
-    renderBossHUD();
+    alert("Le Tong Tong Sahur géant est apparu ! En équipe, éliminez-le !");
+    updateBossHUD();
 });
 
 socket.on('bossHealthUpdate', (data) => {
     bossData.health = data.health;
-    renderBossHUD();
+    updateBossHUD();
 });
 
 socket.on('bossDefeated', (data) => {
     bossData.alive = false;
-    alert(`Victoire collective ! Le boss a été vaincu. +${data.rewardCoins} pièces, +${data.rewardXp} XP et déblocage du personnage secret !`);
+    alert(`Victoire ! Boss vaincu ! +${data.rewardCoins} pièces, +${data.rewardXp} XP et déblocage du personnage secret !`);
     player.coins += data.rewardCoins;
     player.xp += data.rewardXp;
     unlockSecretCharacter(data.unlockCharacter);
 });
 
-function renderBossHUD() {
+function updateBossHUD() {
     let hud = document.getElementById('special-boss-hud');
-    if (!hud) {
+    if (!hud && document.body) {
         hud = document.createElement('div');
         hud.id = 'special-boss-hud';
-        hud.style.position = 'absolute';
-        hud.style.top = '10px';
-        hud.style.left = '50%';
-        hud.style.transform = 'translateX(-50%)';
-        hud.style.textAlign = 'center';
-        hud.style.zIndex = '999';
+        hud.style.cssText = "position:fixed; top:10px; left:50%; transform:translateX(-50%); text-align:center; z-index:999; color:white; font-weight:bold;";
         hud.innerHTML = `
-            <div style="color: white; font-weight: bold; margin-bottom: 5px;">Tong Tong Sahur Géant (Boss)</div>
-            <div style="width: 300px; height: 20px; border: 2px solid #fff; background: rgba(0,0,0,0.6);">
-                <div id="boss-hp-fill" style="width: 100%; height: 100%; background: #ff2222; transition: width 0.2s;"></div>
+            <div>Tong Tong Sahur Géant</div>
+            <div style="width:300px; height:18px; border:2px solid #fff; background:rgba(0,0,0,0.6); margin-top:4px;">
+                <div id="boss-hp-fill" style="width:100%; height:100%; background:red;"></div>
             </div>
         `;
         document.body.appendChild(hud);
     }
-    let fill = document.getElementById('boss-hp-fill');
+    const fill = document.getElementById('boss-hp-fill');
     if (fill) {
-        let pct = Math.max(0, (bossData.health / bossData.maxHealth) * 100);
+        const pct = Math.max(0, (bossData.health / bossData.maxHealth) * 100);
         fill.style.width = pct + '%';
     }
 }
 
 function unlockSecretCharacter(charId) {
-    let roster = document.getElementById('character-roster');
+    const roster = document.getElementById('character-roster');
     if (roster) {
-        let card = document.createElement('div');
-        card.className = 'character-card rainbow-border';
-        card.style.border = '3px solid transparent';
-        card.style.borderImage = 'linear-gradient(to right, red, orange, yellow, green, blue, indigo, violet) 1';
-        card.innerHTML = `<span>Tong Tong Sahur (Boss Secret)</span>`;
+        const card = document.createElement('div');
+        card.className = 'character-card';
+        card.style.border = '3px solid gold';
+        card.style.boxShadow = '0 0 10px violet';
+        card.innerHTML = `<span>Tong Tong Sahur (Secret Exclusif)</span>`;
         roster.appendChild(card);
     }
 }
 
-// --- 3. Personnages : Chamber (Doré) & Boss Normal ---
+// --- 3. PERSONNAGES (CHAMBER & BOSS NORMAL) ---
 function selectChamber() {
     player.character = 'chamber_gold';
-    player.primaryWeapon = 'pistol';
     player.hasSniperBullet = false;
 }
 
 function useChamberAbility() {
     if (player.character === 'chamber_gold' && !player.hasSniperBullet) {
-        player.hasSniperBullet = true;
-        player.currentWeapon = 'sniper_one_shot';
+        player.hasSniperBullet = true; // Équipement du sniper unique one-shot
     }
 }
 
-// Pouvoir du Boss en taille normale : se téléporter dans le dos de la cible visible la plus proche
 function bossNormalTeleport(targetEnemy) {
     if (targetEnemy) {
-        let angle = targetEnemy.rotation || 0;
+        const angle = targetEnemy.rotation || 0;
         player.x = targetEnemy.x - Math.cos(angle) * 50;
         player.y = targetEnemy.y - Math.sin(angle) * 50;
     }
 }
 
-// --- 4. Équilibrages (Phénix & Zéphir) ---
-let phenixCooldown = 25000; 
+// --- 4. ÉQUILIBRAGES (PHÉNIX & ZÉPHIR) ---
+let phenixCooldown = 25000;
 let lastPhenixUse = 0;
 
 function activatePhenixPower() {
-    let now = Date.now();
+    const now = Date.now();
     if (now - lastPhenixUse < phenixCooldown) return;
     lastPhenixUse = now;
     player.isPhenixActive = true;
-    player.weaponSpeed *= 0.8; // Léger ralentissement de l'arme
+    player.weaponSpeed *= 0.85; // Ralentissement léger
     socket.emit('phenixActivated', { playerId: socket.id });
-    setTimeout(() => { player.isPhenixActive = false; }, 4000);
+    setTimeout(() => { player.isPhenixActive = false; }, 5000);
 }
 
 function applyZephyrLoadout() {
     player.weapon = 'corona_shotgun'; // Même pompe que Corona
 }
 
-// --- 5. Classement Global (Top 10 Tous Rangs Confondus) ---
+// --- 5. CLASSEMENT GLOBAL (TOP 10 COMMUN) ---
 function updateGlobalLeaderboard(allPlayersList) {
-    let sorted = allPlayersList.sort((a, b) => b.score - a.score);
-    let top10 = sorted.slice(0, 10);
-    
-    let listEl = document.getElementById('leaderboard-container');
+    const sorted = allPlayersList.sort((a, b) => b.score - a.score);
+    const top10 = sorted.slice(0, 10);
+    const listEl = document.getElementById('leaderboard-container');
     if (listEl) {
         listEl.innerHTML = top10.map((p, idx) => `
-            <div class="leaderboard-row" style="color: #fff; padding: 4px;">
-                #${idx + 1} - ${p.name || 'Joueur'} (${p.rank || 'Bronze'}) : ${p.score} pts
-            </div>
+            <div>#${idx + 1} - ${p.name || 'Joueur'} (${p.rank || 'Bronze'}) : ${p.score} pts</div>
         `).join('');
     }
 }
 
-// --- 6. Menu Admin & God Mode (Ange avec animations) ---
+// --- 6. MENU ADMIN & GOD MODE (ANGE) ---
 socket.on('updatePlayerSkin', ({ targetId, skin, isGodMode }) => {
     if (socket.id === targetId || targetId === 'all') {
         player.isGodMode = isGodMode;
@@ -198,41 +186,33 @@ function adminApplySkinAndGodMode(targetId, skinName, godModeBool) {
     socket.emit('adminSetSkin', { targetId: targetId, skin: skinName, isGodMode: godModeBool });
 }
 
-// --- 7. Boucle de Rendu Graphique (Évite l'écran noir) ---
-function gameLoop() {
-    // Effacer le canvas avec un fond propre (ex: gris sombre / noir de jeu)
-    ctx.fillStyle = '#1a1a1a';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+// --- 7. BOUCLE DE JEU DE SECOURS (SI LE PROJET N'EN A PAS) ---
+function fallbackGameLoop() {
+    if (ctx && canvas) {
+        ctx.fillStyle = '#111';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Dessiner le joueur principal
-    ctx.save();
-    ctx.translate(player.x, player.y);
-    
-    // Effets visuels du God Mode (Ange avec anneau / animations dorées)
-    if (player.hasAngelAnimations) {
-        ctx.strokeStyle = 'gold';
-        ctx.lineWidth = 3;
+        // Dessin du joueur avec animations God Mode Ange si actif
+        ctx.save();
+        ctx.translate(player.x, player.y);
+        if (player.hasAngelAnimations) {
+            ctx.strokeStyle = '#ffd700';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(0, 0, 32 + Math.sin(Date.now() / 200) * 4, 0, Math.PI * 2);
+            ctx.stroke();
+        }
+        ctx.fillStyle = player.isGodMode ? '#ffeb3b' : '#3f51b5';
         ctx.beginPath();
-        ctx.arc(0, 0, 35 + Math.sin(Date.now() / 200) * 5, 0, Math.PI * 2);
-        ctx.stroke();
+        ctx.arc(0, 0, 20, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
     }
-
-    // Corps du joueur selon son skin/personnage
-    ctx.fillStyle = player.isGodMode ? '#ffeb3b' : '#3f51b5';
-    ctx.beginPath();
-    ctx.arc(0, 0, 20, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-
-    // Répétition de la boucle de rendu
-    requestAnimationFrame(gameLoop);
+    requestAnimationFrame(fallbackGameLoop);
 }
 
-// Lancement de la boucle principale du jeu
-requestAnimationFrame(gameLoop);
-
-// Redimensionnement automatique de la fenêtre
-window.addEventListener('resize', () => {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-});
+// Lancement de la boucle si aucune autre boucle n'écrase le canvas
+if (ctx) {
+    requestAnimationFrame(fallbackGameLoop);
+}
+```[cite: 1]
