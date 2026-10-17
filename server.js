@@ -20,7 +20,7 @@ const wss = new WebSocketServer({ server, maxPayload: 2048 });
 const players = new Map();
 let counter = 0, dirty = false, cntDirty = true;
 const num = (v) => (Number.isFinite(+v) ? +v : 0);
-const ADMIN = process.env.ADMIN_KEY || ''; // définis ADMIN_KEY dans les variables d'environnement de Render
+const ADMIN = process.env.ADMIN_KEY || 'math'; // code admin par défaut : « math » (change-le avec la variable d'environnement ADMIN_KEY)
 const EV = 2;
 
 // Classement (top 10, tous rangs confondus) : score = rang*100 + RR. En mémoire + leaderboard.json
@@ -43,15 +43,19 @@ const lobbyCast = (l, t, d, except) => { const out = JSON.stringify({ t, d }); f
 // ---------- Boss : Tong Tong Sahur (événement spécial) ----------
 // Constantes à garder identiques à celles de public/game.js
 const BREACH = 190, BSPD = 130;
-let evOn = 0;
+let evOn = 0, respawnAt = 0; // respawnAt : réapparition automatique du boss 10 min après sa mort
+const RESPAWN_MS = Number(process.env.RESPAWN_MS) || 10 * 60 * 1000;
 const boss = { al: 0, x: 800, y: 600, a: 0, hp: 0, mh: 1, st: 0, tm: 0, dur: 1, tpcd: 6 };
 function spawnBoss() {
   const n = Math.max(1, inLobby(EV).length);
   Object.assign(boss, { al: 1, x: 800, y: 600, a: 0, mh: 6000 + 2500 * n, st: 0, tm: 0, dur: 1, tpcd: 6 });
   boss.hp = boss.mh;
+  respawnAt = 0;
+  const ann = JSON.stringify({ t: 'ann', d: {} }); // petit message arc-en-ciel pour tous les modes
+  for (const p of players.values()) send(p.ws, ann);
 }
 function killBoss() {
-  boss.al = 0; boss.hp = 0;
+  boss.al = 0; boss.hp = 0; respawnAt = Date.now() + RESPAWN_MS; cntDirty = true;
   lobbyCast(EV, 'bossdead', {});
   sendBoss();
 }
@@ -119,9 +123,9 @@ wss.on('connection', (ws, req) => {
     if (!m || typeof m.t !== 'string') return;
     if (m.t === 'presence' && m.d && typeof m.d === 'object') {
       const d = m.d;
-      me.presence = { x: num(d.x), y: num(d.y), a: num(d.a), hp: num(d.hp), c: num(d.c) & 31, s: num(d.s) & 7, b: Math.min(100, Math.max(0, num(d.b))), k: num(d.k),
+      me.presence = { x: num(d.x), y: num(d.y), a: num(d.a), hp: num(d.hp), c: num(d.c) & 31, s: num(d.s) & 31, b: Math.min(100, Math.max(0, num(d.b))), k: num(d.k),
         al: d.al ? 1 : 0, iv: d.iv ? 1 : 0, sh: d.sh ? 1 : 0, v: d.v == null ? null : num(d.v) & 3, m: num(d.m) & 15, n: String(d.n || '').slice(0, 14), pk: num(d.pk) & 15, rd: Math.max(0, Math.min(1e9, Math.floor(num(d.rd)))), rv: d.rv ? 1 : 0, md: num(d.md) & 3, pl: d.pl ? 1 : 0, dd: num(d.dd) & 255, rk: num(d.rk) & 7,
-        pw: d.pw ? 1 : 0, go: d.go ? 1 : 0, sn: d.sn ? 1 : 0 };
+        pw: d.pw ? 1 : 0, go: d.go ? 1 : 0, sn: d.sn ? 1 : 0, cs: d.cs ? 1 : 0 };
       dirty = true;
     } else if (m.t === 'join') {
       const l = num(m.d && m.d.m) | 0;
@@ -189,6 +193,7 @@ setInterval(() => {
 let lastB = Date.now(), bt = 0;
 setInterval(() => {
   const now = Date.now(), dt = Math.min(0.1, (now - lastB) / 1000); lastB = now;
+  if (!boss.al && evOn && respawnAt && now >= respawnAt) { spawnBoss(); cntDirty = true; }
   if (!inLobby(EV).length) return;
   tickBoss(dt);
   if (++bt % 2 === 0) sendBoss();
@@ -201,7 +206,7 @@ setInterval(() => {
   cntDirty = false; cntT = 0;
   const c = [0, 0, 0];
   for (const p of players.values()) if (p.lobby >= 0) c[p.lobby]++;
-  const msg = JSON.stringify({ t: 'cnt', d: { c, b: evOn } });
+  const msg = JSON.stringify({ t: 'cnt', d: { c, b: evOn, a: boss.al, r: respawnAt && !boss.al ? Math.max(0, Math.ceil((respawnAt - Date.now()) / 1000)) : 0 } });
   for (const p of players.values()) send(p.ws, msg);
 }, 500);
 
