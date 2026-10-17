@@ -44,10 +44,10 @@ const lobbyCast = (l, t, d, except) => { const out = JSON.stringify({ t, d }); f
 // Constantes à garder identiques à celles de public/game.js
 const BREACH = 190, BSPD = 130;
 let evOn = 0;
-const boss = { al: 0, x: 800, y: 600, a: 0, hp: 0, mh: 1, st: 0, tm: 0, dur: 1 };
+const boss = { al: 0, x: 800, y: 600, a: 0, hp: 0, mh: 1, st: 0, tm: 0, dur: 1, tpcd: 6 };
 function spawnBoss() {
   const n = Math.max(1, inLobby(EV).length);
-  Object.assign(boss, { al: 1, x: 800, y: 600, a: 0, mh: 6000 + 2500 * n, st: 0, tm: 0, dur: 1 });
+  Object.assign(boss, { al: 1, x: 800, y: 600, a: 0, mh: 6000 + 2500 * n, st: 0, tm: 0, dur: 1, tpcd: 6 });
   boss.hp = boss.mh;
 }
 function killBoss() {
@@ -63,9 +63,11 @@ function sendBoss() {
 function tickBoss(dt) {
   if (!boss.al) return;
   let tg = null, bd = 1e9;
+  const alive = [];
   for (const p of inLobby(EV)) {
     const q = p.presence;
     if (!q || !q.al) continue;
+    alive.push(q);
     const d = Math.hypot(q.x - boss.x, q.y - boss.y);
     if (d < bd) { bd = d; tg = q; }
   }
@@ -76,6 +78,17 @@ function tickBoss(dt) {
     boss.a += Math.max(-m, Math.min(m, df));
   };
   boss.tm += dt;
+  boss.tpcd -= dt;
+  if (boss.st === 0 && boss.tpcd <= 0 && alive.length) { // téléportation dans le dos d'un joueur (au hasard), puis coup annoncé
+    const v = alive[Math.floor(Math.random() * alive.length)], d = 120;
+    boss.x = v.x - Math.cos(v.a) * d; boss.y = v.y - Math.sin(v.a) * d;
+    boss.x = Math.max(110, Math.min(1490, boss.x)); boss.y = Math.max(110, Math.min(1090, boss.y));
+    boss.a = Math.atan2(v.y - boss.y, v.x - boss.x);
+    boss.st = 1; boss.tm = 0; boss.dur = 0.7; boss.tpcd = 7 + Math.random() * 5;
+    lobbyCast(EV, 'btp', { x: Math.round(boss.x), y: Math.round(boss.y) });
+    sendBoss();
+    return;
+  }
   if (boss.st === 0) {
     turn(3.5);
     if (tg) {
