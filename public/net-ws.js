@@ -20,7 +20,7 @@
       else if (m.t === 'sync') offset = m.time - Date.now();
       else if (m.t === 'lb') netLB(m.list);
       else if (m.t === 'acc_ok' || m.t === 'acc_no') netAcc(m.t, m.d);
-      else if (m.t === 'cnt') netCounts(m.d.c, m.d.b, m.d.a, m.d.r);
+      else if (m.t === 'cnt') netCounts(m.d.c, m.d.b, m.d.a, m.d.r, m.d.t);
       else netEvent(m.t, m.d, m.from);
     };
     ws.onopen = () => { net.send('lb_get'); netOpen(); };

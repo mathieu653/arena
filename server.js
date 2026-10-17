@@ -70,28 +70,32 @@ const send = (ws, o) => { if (ws.readyState === 1) ws.send(typeof o === 'string'
 const inLobby = (l) => [...players.values()].filter((p) => p.lobby === l);
 const lobbyCast = (l, t, d, except) => { const out = JSON.stringify({ t, d }); for (const [pid, p] of players) if (p.lobby === l && pid !== except) send(p.ws, out); };
 
-// ---------- Boss : Tong Tong Sahur (événement spécial) ----------
+// ---------- Boss (événement spécial) ----------
 // Constantes à garder identiques à celles de public/game.js
-const BREACH = 190, BSPD = 130;
+const SLR = 230, BSPD = 115;
 let evOn = 0, respawnAt = 0; // respawnAt : réapparition automatique du boss 10 min après sa mort
 const RESPAWN_MS = Number(process.env.RESPAWN_MS) || 10 * 60 * 1000;
-const boss = { al: 0, x: 800, y: 600, a: 0, hp: 0, mh: 1, st: 0, tm: 0, dur: 1, tpcd: 6 };
-function spawnBoss() {
-  const n = Math.max(1, inLobby(EV).length);
-  Object.assign(boss, { al: 1, x: 800, y: 600, a: 0, mh: 6000 + 2500 * n, st: 0, tm: 0, dur: 1, tpcd: 6 });
+// Registre des boss : pour en ajouter un, déclare-le ici (PV + fonction tick) puis dans BOSSL de public/game.js
+const BOSSES = { magma: { hp0: 6000, hpN: 2500, tick: tickMagma } };
+const boss = { bt: 'magma', al: 0, x: 800, y: 600, a: 0, hp: 0, mh: 1, st: 0, tm: 0, dur: 1, mtcd: 6, en: 0 };
+const clampB = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+function spawnBoss(type) {
+  if (BOSSES[type]) boss.bt = type;
+  const B = BOSSES[boss.bt], n = Math.max(1, inLobby(EV).length);
+  Object.assign(boss, { al: 1, x: 800, y: 600, a: 0, mh: B.hp0 + B.hpN * n, st: 0, tm: 0, dur: 1, mtcd: 6, en: 0 });
   boss.hp = boss.mh;
   respawnAt = 0;
-  const ann = JSON.stringify({ t: 'ann', d: {} }); // petit message arc-en-ciel pour tous les modes
+  const ann = JSON.stringify({ t: 'ann', d: { b: boss.bt } }); // petit message arc-en-ciel pour tous les modes
   for (const p of players.values()) send(p.ws, ann);
 }
 function killBoss() {
   boss.al = 0; boss.hp = 0; respawnAt = Date.now() + RESPAWN_MS; cntDirty = true;
-  lobbyCast(EV, 'bossdead', {});
+  lobbyCast(EV, 'bossdead', { b: boss.bt });
   sendBoss();
 }
 function sendBoss() {
   lobbyCast(EV, 'boss', boss.al
-    ? { al: 1, x: Math.round(boss.x), y: Math.round(boss.y), a: +boss.a.toFixed(2), hp: Math.round(boss.hp), mh: boss.mh, st: boss.st, tp: +Math.min(1, boss.tm / boss.dur).toFixed(2) }
+    ? { al: 1, bt: boss.bt, en: boss.en, x: Math.round(boss.x), y: Math.round(boss.y), a: +boss.a.toFixed(2), hp: Math.round(boss.hp), mh: boss.mh, st: boss.st, tp: +Math.min(1, boss.tm / boss.dur).toFixed(2) }
     : { al: 0 });
 }
 function tickBoss(dt) {
@@ -105,6 +109,15 @@ function tickBoss(dt) {
     const d = Math.hypot(q.x - boss.x, q.y - boss.y);
     if (d < bd) { bd = d; tg = q; }
   }
+  BOSSES[boss.bt].tick(dt, alive, tg, bd);
+  boss.a = Math.atan2(Math.sin(boss.a), Math.cos(boss.a));
+  boss.x = clampB(boss.x, 110, 1490); boss.y = clampB(boss.y, 110, 1090);
+}
+// Magmaar : poing écrasant (zone circulaire annoncée), pluie de météores (impacts annoncés), rage sous 50 % de PV
+// états : 0 marche · 1 préparation du coup · 2 impact · 3 récupération · 4 incantation des météores
+function tickMagma(dt, alive, tg, bd) {
+  const en = boss.hp < boss.mh * 0.5;
+  boss.en = en ? 1 : 0;
   const turn = (rate) => {
     if (!tg) return;
     const want = Math.atan2(tg.y - boss.y, tg.x - boss.x);
@@ -112,33 +125,35 @@ function tickBoss(dt) {
     boss.a += Math.max(-m, Math.min(m, df));
   };
   boss.tm += dt;
-  boss.tpcd -= dt;
-  if (boss.st === 0 && boss.tpcd <= 0 && alive.length) { // téléportation dans le dos d'un joueur (au hasard), puis coup annoncé
-    const v = alive[Math.floor(Math.random() * alive.length)], d = 120;
-    boss.x = v.x - Math.cos(v.a) * d; boss.y = v.y - Math.sin(v.a) * d;
-    boss.x = Math.max(110, Math.min(1490, boss.x)); boss.y = Math.max(110, Math.min(1090, boss.y));
-    boss.a = Math.atan2(v.y - boss.y, v.x - boss.x);
-    boss.st = 1; boss.tm = 0; boss.dur = 0.7; boss.tpcd = 7 + Math.random() * 5;
-    lobbyCast(EV, 'btp', { x: Math.round(boss.x), y: Math.round(boss.y) });
-    sendBoss();
-    return;
-  }
+  boss.mtcd -= dt;
   if (boss.st === 0) {
-    turn(3.5);
+    turn(3);
+    if (boss.mtcd <= 0 && alive.length) { // pluie de météores : un impact par joueur vivant + quelques impacts au hasard
+      boss.st = 4; boss.tm = 0; boss.dur = 1.3;
+      boss.mtcd = (en ? 7 : 11) + Math.random() * 3;
+      const pts = [], n = Math.min(12, alive.length + (en ? 5 : 3));
+      for (let i = 0; i < n; i++) {
+        const v = alive[i % alive.length], rnd = i >= alive.length;
+        pts.push([Math.round(clampB(v.x + (rnd ? (Math.random() - 0.5) * 300 : 0), 60, 1540)), Math.round(clampB(v.y + (rnd ? (Math.random() - 0.5) * 300 : 0), 60, 1140))]);
+      }
+      lobbyCast(EV, 'bmeteor', { p: pts });
+      sendBoss();
+      return;
+    }
     if (tg) {
-      if (bd > BREACH * 0.6) { boss.x += Math.cos(boss.a) * BSPD * dt; boss.y += Math.sin(boss.a) * BSPD * dt; }
-      if (bd < BREACH - 25) { boss.st = 1; boss.tm = 0; boss.dur = 0.8; }
+      const spd = BSPD * (en ? 1.4 : 1);
+      if (bd > SLR * 0.5) { boss.x += Math.cos(boss.a) * spd * dt; boss.y += Math.sin(boss.a) * spd * dt; }
+      if (bd < SLR - 50) { boss.st = 1; boss.tm = 0; boss.dur = en ? 0.75 : 1; }
     }
-  } else if (boss.st === 1) { // préparation du coup : zone rouge visible
-    turn(2.2);
+  } else if (boss.st === 1) { // préparation : la zone rouge grandit, il faut s'éloigner
+    turn(1.2);
     if (boss.tm >= boss.dur) {
-      boss.st = 2; boss.tm = 0; boss.dur = 0.22;
-      lobbyCast(EV, 'bswing', { x: Math.round(boss.x), y: Math.round(boss.y), a: +boss.a.toFixed(2) });
+      boss.st = 2; boss.tm = 0; boss.dur = 0.25;
+      lobbyCast(EV, 'bswing', { x: Math.round(boss.x), y: Math.round(boss.y) });
     }
-  } else if (boss.st === 2) { if (boss.tm >= boss.dur) { boss.st = 3; boss.tm = 0; boss.dur = 0.6; } }
-  else if (boss.tm >= boss.dur) { boss.st = 0; boss.tm = 0; boss.dur = 1; }
-  boss.a = Math.atan2(Math.sin(boss.a), Math.cos(boss.a));
-  boss.x = Math.max(110, Math.min(1490, boss.x)); boss.y = Math.max(110, Math.min(1090, boss.y));
+  } else if (boss.st === 2) { if (boss.tm >= boss.dur) { boss.st = 3; boss.tm = 0; boss.dur = en ? 0.5 : 0.8; } }
+  else if (boss.st === 3) { if (boss.tm >= boss.dur) { boss.st = 0; boss.tm = 0; boss.dur = 1; } }
+  else if (boss.tm >= boss.dur) { boss.st = 0; boss.tm = 0; boss.dur = 1; } // fin de l'incantation
 }
 
 wss.on('connection', (ws, req) => {
@@ -206,8 +221,10 @@ wss.on('connection', (ws, req) => {
       if (evOn && !boss.al) spawnBoss();
       if (!evOn && boss.al) { boss.al = 0; sendBoss(); }
       cntDirty = true;
+    } else if (m.t === 'evkill' && me.admin) { // tuer le boss (test des récompenses)
+      if (boss.al) killBoss();
     } else if (m.t === 'evspawn' && me.admin) { // faire réapparaître le boss
-      evOn = 1; spawnBoss(); cntDirty = true;
+      evOn = 1; spawnBoss(m.d && m.d.b); cntDirty = true;
     } else if (m.t === 'admin_login') {
       me.tries = (me.tries || 0) + 1;
       const ok = ADMIN && me.tries <= 5 && m.d === ADMIN;
@@ -286,7 +303,7 @@ setInterval(() => {
   cntDirty = false; cntT = 0;
   const c = [0, 0, 0];
   for (const p of players.values()) if (p.lobby >= 0) c[p.lobby]++;
-  const msg = JSON.stringify({ t: 'cnt', d: { c, b: evOn, a: boss.al, r: respawnAt && !boss.al ? Math.max(0, Math.ceil((respawnAt - Date.now()) / 1000)) : 0 } });
+  const msg = JSON.stringify({ t: 'cnt', d: { c, b: evOn, a: boss.al, t: boss.bt, r: respawnAt && !boss.al ? Math.max(0, Math.ceil((respawnAt - Date.now()) / 1000)) : 0 } });
   for (const p of players.values()) send(p.ws, msg);
 }, 500);
 
