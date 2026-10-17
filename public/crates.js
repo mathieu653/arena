@@ -258,7 +258,7 @@ const crTabR = i => ({ x: 150 + i * 240, y: 12, w: 232, h: 36 });
 const crCardR = i => ({ x: 24 + i * 186, y: 64, w: 176, h: 404 });
 const crBuyR = i => { const c = crCardR(i); return { x: c.x + 10, y: c.y + c.h - 52, w: c.w - 20, h: 42 } };
 const crSlotR = i => ({ x: 24 + i * 156, y: 58, w: 150, h: 34 });
-const crCellR = k => ({ x: 24 + (k % 6) * 154, y: 100 + Math.floor(k / 6) * 132, w: 148, h: 124 });
+const crCellR = k => ({ x: 300 + (k % 4) * 160, y: 100 + Math.floor(k / 4) * 78, w: 154, h: 72 });
 const crOkR = { x: 500, y: 450, w: 170, h: 48 }, crEqR = { x: 290, y: 450, w: 170, h: 48 };
 const crList = () => CAT.filter(it => it.t == 'bwpk'[crTab]);
 function crBtn(p, txt, col, on) { const h = inB(p, M.x, M.y) && on !== false; g.fillStyle = on === false ? '#171c27' : h ? '#2b3a58' : '#1d2740'; g.fillRect(p.x, p.y, p.w, p.h); g.strokeStyle = on === false ? '#444c5e' : h ? '#fff' : col; g.lineWidth = 2; g.strokeRect(p.x, p.y, p.w, p.h); g.fillStyle = on === false ? '#7b8499' : '#f0e6d0'; g.textAlign = 'center'; g.font = 'bold 15px' + F2; g.fillText(txt, p.x + p.w / 2, p.y + p.h / 2 + 5) }
@@ -292,18 +292,57 @@ function crShop() {
   g.fillText('Fais Top 1 (3 kills minimum) en Classique → Caisse Champion · Top 1 en Classé → Caisse Radiant. Doublon = pièces rendues.', W / 2, 496);
   g.fillText('Équipe tes objets dans l\'onglet Personnalisation.  Objets possédés : ' + SV.cw.length + ' / ' + CAT.length, W / 2, 518);
 }
+// Onglet Personnalisation : un mannequin à gauche (montre les objets équipés) + liste compacte des objets à droite (sans images de personnages)
+const crPanR = { x: 24, y: 100, w: 262, h: 392 };
+function crDummy() {
+  const P = crPanR, t = tt, S = { r: 17, L: 22 }, sc = 2.3, cx = P.x + 114, cy = P.y + 124 + Math.sin(t * 2) * 2.5;
+  const cb = SV.cq.b >= 0 ? CAT[SV.cq.b] : null, cw = SV.cq.w >= 0 ? CAT[SV.cq.w] : null, cp = SV.cq.p >= 0 ? CAT[SV.cq.p] : null, ck = SV.cq.k >= 0 ? CAT[SV.cq.k] : null;
+  const sk = SKINS[SV.skin] || SKINS[0];
+  g.save(); g.fillStyle = '#0e1320'; g.fillRect(P.x, P.y, P.w, P.h);
+  const bg = g.createRadialGradient(cx, cy, 10, cx, cy, 210); bg.addColorStop(0, 'rgba(100,120,190,.30)'); bg.addColorStop(1, 'rgba(100,120,190,0)'); g.fillStyle = bg; g.fillRect(P.x, P.y, P.w, P.h);
+  g.strokeStyle = '#3a4560'; g.lineWidth = 2; g.strokeRect(P.x, P.y, P.w, P.h);
+  g.beginPath(); g.rect(P.x + 1, P.y + 1, P.w - 2, P.h - 2); g.clip();
+  g.textAlign = 'center'; g.fillStyle = '#c5cfe0'; g.font = 'bold 14px' + F2; g.fillText('Aperçu — mannequin', P.x + P.w / 2, P.y + 22);
+  g.fillStyle = 'rgba(0,0,0,.35)'; g.beginPath(); g.ellipse(cx + 4, P.y + 124 + 52, 52, 11, 0, 0, 7); g.fill();
+  g.save(); g.translate(cx, cy); g.scale(sc, sc);
+  g.fillStyle = '#1b1f2a'; g.fillRect(S.r - 4, -3.5, S.L, 7);
+  if (cw) crWpnFx(S, cw);
+  g.fillStyle = cb ? crFill(cb, S.r) : (sk.c || '#5a6478'); g.beginPath(); g.arc(0, 0, S.r, 0, 7); g.fill(); g.strokeStyle = 'rgba(0,0,0,.5)'; g.lineWidth = 3; g.stroke();
+  g.fillStyle = '#111'; g.beginPath(); g.arc(S.r * .35, -S.r * .35, 2.4, 0, 7); g.arc(S.r * .35, S.r * .35, 2.4, 0, 7); g.fill();
+  if (cb) crBodyFx(S, cb); else if (sk.rk) { if (sk.an) radFx(S); else rkFx(S, SV.skin) }
+  if (cb) crUp(S, cb);
+  if (cw) { const o = (t * 90) % 36; for (const q of [o, (o + 18) % 36]) crBulAt(cw, S.r + S.L + 4 + q, 0, 600, 0) }
+  g.restore();
+  if (cp) { const d = .9 + .15 * cp.r, tm = t % (d + 1.3); if (tm < d) { g.save(); g.translate(cx, cy); g.scale(.75, .75); crPfx(cp, 0, 0, tm, d); g.restore() } }
+  const tx = P.x + 208, ty = P.y + 248;
+  g.fillStyle = 'rgba(255,255,255,.10)'; g.beginPath(); g.arc(tx, ty, 15, 0, 7); g.fill(); g.strokeStyle = 'rgba(255,255,255,.35)'; g.lineWidth = 2; g.stroke();
+  g.beginPath(); g.moveTo(tx - 7, ty - 5); g.lineTo(tx - 2, ty); g.moveTo(tx - 2, ty - 5); g.lineTo(tx - 7, ty); g.moveTo(tx + 2, ty - 5); g.lineTo(tx + 7, ty); g.moveTo(tx + 7, ty - 5); g.lineTo(tx + 2, ty); g.stroke();
+  g.fillStyle = '#6d7690'; g.font = '10px' + F2; g.fillText('cible', tx, ty + 28);
+  if (ck) { const dk = CRKD[ck.k], tm = t % (dk + 1.4); if (tm < dk) { g.save(); g.translate(tx, ty); g.scale(.7, .7); crKfx(ck.k, 0, 0, tm, ck.th); g.restore() } }
+  const y0 = P.y + 298; g.strokeStyle = '#2c3446'; g.lineWidth = 1; g.beginPath(); g.moveTo(P.x + 12, y0 - 14); g.lineTo(P.x + P.w - 12, y0 - 14); g.stroke();
+  [['Perso', cb], ['Arme', cw], ['Pouvoir', cp], ['Kill', ck]].forEach((r, i) => { const y = y0 + i * 20; g.textAlign = 'left'; g.fillStyle = '#8f9bb3'; g.font = '11px' + F2; g.fillText(r[0], P.x + 14, y);
+    g.fillStyle = r[1] ? CRT[r[1].r].c : '#566077'; g.font = (r[1] ? 'bold ' : '') + '12px' + F2; g.fillText(r[1] ? r[1].n : '— aucun —', P.x + 74, y) });
+  if (!cb && !cw && !cp && !ck) { g.textAlign = 'center'; g.fillStyle = '#6d7690'; g.font = '11px' + F2; g.fillText('Équipe un objet pour le voir ici', P.x + P.w / 2, P.y + P.h - 8) }
+  g.restore();
+}
 function crPerso() {
   g.textAlign = 'center'; ['b', 'w', 'p', 'k'].forEach((t, i) => { const p = crSlotR(i), on = crTab == i, n = SV.cw.filter(j => CAT[j].t == t).length, tot = CAT.filter(it => it.t == t).length;
     g.fillStyle = on ? '#2b3a58' : '#161d2a'; g.fillRect(p.x, p.y, p.w, p.h); g.strokeStyle = on ? '#fff' : inB(p, M.x, M.y) ? '#9ab' : '#556'; g.lineWidth = 2; g.strokeRect(p.x, p.y, p.w, p.h); g.fillStyle = '#f0e6d0'; g.font = 'bold 14px' + F2; g.fillText(CRTY[t] + '  ' + n + '/' + tot, p.x + p.w / 2, p.y + 22) });
   const cur = SV.cq['bwpk'[crTab]]; g.textAlign = 'right'; g.fillStyle = '#9aa7bd'; g.font = '13px' + F2; g.fillText('Équipé : ' + (cur >= 0 ? CAT[cur].n : 'rien'), W - 24, 80);
+  crDummy();
   crList().forEach((it, k) => {
-    const p = crCellR(k), own = SV.cw.includes(it.i), eq = SV.cq[it.t] == it.i, hv = inB(p, M.x, M.y) && own, rc = CRT[it.r].c;
-    g.fillStyle = '#121826'; g.fillRect(p.x, p.y, p.w, p.h); g.strokeStyle = eq ? '#ffd98a' : own ? rc : '#2c3446'; g.lineWidth = eq ? 4 : hv ? 3 : 2; g.strokeRect(p.x, p.y, p.w, p.h);
-    g.save(); g.beginPath(); g.rect(p.x + 2, p.y + 2, p.w - 4, 76); g.clip();
-    if (own) crPrev(it, p.x + p.w / 2, p.y + 42, it.t == 'b' || it.t == 'w' ? 1.05 : .8); else { g.globalAlpha = .5; g.fillStyle = rc; g.font = 'bold 34px' + F2; g.textAlign = 'center'; g.fillText('?', p.x + p.w / 2, p.y + 54) }
-    g.restore(); g.textAlign = 'center'; g.fillStyle = own ? '#f0e6d0' : '#6d7690'; g.font = 'bold 12px' + F2; g.fillText(own ? it.n : '???', p.x + p.w / 2, p.y + 96);
-    g.font = '11px' + F2; g.fillStyle = eq ? '#3fcf5a' : own ? '#9aa7bd' : rc; g.fillText(eq ? '✔ Équipé — clic pour retirer' : own ? 'Équiper' : CRT[it.r].n + (it.x ? ' · caisse Top 1' : ''), p.x + p.w / 2, p.y + 114);
+    const p = crCellR(k), own = SV.cw.includes(it.i), eq = SV.cq[it.t] == it.i, hv = inB(p, M.x, M.y) && own, rc = CRT[it.r].c, th = CRTH[it.th];
+    g.fillStyle = eq ? '#1a2234' : '#121826'; g.fillRect(p.x, p.y, p.w, p.h); g.strokeStyle = eq ? '#ffd98a' : own ? rc : '#2c3446'; g.lineWidth = eq ? 4 : hv ? 3 : 2; g.strokeRect(p.x, p.y, p.w, p.h);
+    const sx = p.x + 28, sy = p.y + 36;
+    if (own) { const gr = g.createLinearGradient(sx - 18, sy - 18, sx + 18, sy + 18); if (it.th == 13) for (let i = 0; i < 4; i++) gr.addColorStop(i / 3, 'hsl(' + ((tt * 120 + i * 80) % 360) + ',95%,62%)'); else { gr.addColorStop(0, th[1]); gr.addColorStop(1, th[2]) } g.fillStyle = gr; g.beginPath(); g.arc(sx, sy, 18, 0, 7); g.fill(); g.strokeStyle = rc; g.lineWidth = 3; g.stroke() }
+    else { g.fillStyle = '#1c2231'; g.beginPath(); g.arc(sx, sy, 18, 0, 7); g.fill(); g.strokeStyle = '#2c3446'; g.lineWidth = 2; g.stroke(); g.fillStyle = rc; g.globalAlpha = .6; g.font = 'bold 22px' + F2; g.textAlign = 'center'; g.fillText('?', sx, sy + 8); g.globalAlpha = 1 }
+    for (let j = 0; j <= it.r; j++) { g.fillStyle = own ? rc : '#2c3446'; g.beginPath(); g.arc(sx - 12 + j * 6, p.y + 62, 2, 0, 7); g.fill() }
+    const nm = own ? it.n : '???', sp = nm.indexOf(' '), l1 = sp > 0 ? nm.slice(0, sp) : nm, l2 = sp > 0 ? nm.slice(sp + 1) : '';
+    g.textAlign = 'left'; g.fillStyle = own ? '#f0e6d0' : '#6d7690'; g.font = 'bold 12px' + F2; g.fillText(l1, p.x + 56, p.y + 22);
+    if (l2) { g.font = '11px' + F2; g.fillStyle = own ? '#c5cfe0' : '#566077'; g.fillText(l2, p.x + 56, p.y + 38) }
+    g.font = 'bold 10px' + F2; g.fillStyle = eq ? '#3fcf5a' : own ? '#9aa7bd' : rc; g.fillText(eq ? '✔ Équipé' : own ? 'Équiper' : CRT[it.r].n + (it.x ? ' · Top 1' : ''), p.x + 56, p.y + 62);
   });
+  g.textAlign = 'center'; g.fillStyle = '#7b8499'; g.font = '12px' + F2; g.fillText('Clique un objet possédé pour l\'équiper — reclique pour le retirer.', 300 + 320, 512);
 }
 function crOpen() {
   const o = crOp, t = (performance.now() - o.t0) / 1000, C = CRC[o.ci], it = o.it, rc = CRT[it.r].c; g.fillStyle = 'rgba(3,5,9,.93)'; g.fillRect(0, 0, W, H);
@@ -337,8 +376,7 @@ function crClick() {
   else { for (let i = 0; i < 4; i++) if (inB(crSlotR(i), M.x, M.y)) crTab = i; crList().forEach((it, k) => { if (inB(crCellR(k), M.x, M.y) && SV.cw.includes(it.i)) crEquip(it.i) }) }
 }
 function crOpenScr(n) { bp = shop = st = 0; psk = 1; crS = n; crOp = null }
-const crBtnR = k => ({ x: 30 + k * 132, y: 498, w: 126, h: 36 });
-function crMenuClick() { for (let k = 0; k < 2; k++) if (inB(crBtnR(k), M.x, M.y)) { crOpenScr(k + 1); return 1 } return 0 }
+function crMenuClick() { return 0 } // plus de boutons sur le menu des modes : les caisses s'ouvrent depuis l'écran de choix (cases) ou avec C / V
 function crBanner() {
   if (ph.n == 0) crWinInfo = null; if (ph.n != 1 || !crWinInfo || psk || st || shop || bp) return;
   g.setTransform(1, 0, 0, 1, 0, 0); g.textAlign = 'center'; g.fillStyle = '#ffd98a'; g.font = 'bold 18px' + F2; g.fillText('🏆 TOP 1 ! Tu gagnes une ' + CRC[crWinInfo.ci].n + ' — ouvre-la dans Caisses (C)', W / 2, 520);
@@ -346,13 +384,10 @@ function crBanner() {
 
 // ---------- Branchements sur game.js ----------
 {
-  const _dm = drawMenu; drawMenu = function () {
-    _dm(); crInit(); ['Caisses (C)', 'Personnalisation (V)'].forEach((tx, k) => { const p = crBtnR(k); g.setTransform(1, 0, 0, 1, 0, 0); g.fillStyle = '#2a1d2e'; g.fillRect(p.x, p.y, p.w, p.h); g.strokeStyle = inB(p, M.x, M.y) ? '#fff' : '#a56'; g.lineWidth = 2; g.strokeRect(p.x, p.y, p.w, p.h);
-      g.textAlign = 'center'; g.fillStyle = '#f0d6c5'; g.font = (k ? '11px' : '13px') + F2; g.fillText(tx, p.x + p.w / 2, p.y + 23); if (k == 0 && crTopCount() > 0) { g.fillStyle = '#ff4a4a'; g.beginPath(); g.arc(p.x + p.w - 4, p.y + 4, 10, 0, 7); g.fill(); g.fillStyle = '#fff'; g.font = 'bold 12px' + F2; g.fillText(crTopCount(), p.x + p.w - 4, p.y + 8) } })
-  };
   const _o0 = overlays0; overlays0 = function () { if (!psk) { crS = 0; crOp = null } if (psk && crS) { crDraw(); return } _o0(); crBanner() };
   const _d = draw; draw = function () { _d(); crFxDraw() };
   const _ua = useAb; useAb = function (s, dx, dy, l) { _ua(s, dx, dy, l); if (me.ab > 0) { const it = crGet(crCx(), 'p'); if (it) { crPowFx(myPeer || 'me', me.x, me.y, it); snd('pfx', { x: Math.round(me.x), y: Math.round(me.y) }) } } };
   const _ne = netEvent; netEvent = function (t, d, from) { d = d || {}; if (t == 'kill') crKillEv(d.by, String(d.vic || from)); else if (t == 'pfx') { crPfxRecv(d, from); return } _ne(t, d, from) };
   addEventListener('keydown', e => { if (e.ctrlKey || e.metaKey || e.altKey) return; if (e.code == 'KeyC' || e.code == 'KeyV') { const n = e.code == 'KeyC' ? 1 : 2; if (psk && crS == n) { psk = 0; crS = 0 } else crOpenScr(n) } });
 }
+crInit();
