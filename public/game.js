@@ -239,13 +239,29 @@ g.globalAlpha=.55+.25*Math.sin(tt*8);g.strokeStyle='#ff8a3c';g.lineWidth=4;g.beg
 function phMark(px,py){g.save();g.translate(px-cam.x,py-cam.y);g.strokeStyle='#ff8a3c';g.lineWidth=3;g.globalAlpha=.8;g.beginPath();g.arc(0,0,16+Math.sin(tt*8)*2,0,7);g.stroke();g.restore()}
 
 // ---- Menu admin : sélecteur de skin / personnage à donner ----
-let admP=0;
-const admItems=()=>admP==1?[...SKINS.map((k,i)=>[k.n,i]).slice(1),...PACKS.map((q,i)=>['Pack '+q.n,100+i])]:CH.map((c,i)=>[c.n,i]);
-const admPk=k=>({x:30+(k%5)*180,y:92+Math.floor(k/5)*46,w:172,h:38});
-function drawAdmPick(){g.fillStyle='rgba(5,7,11,.98)';g.fillRect(0,0,W,H);g.textAlign='center';g.fillStyle='#ffb347';g.font='bold 24px'+F2;
-g.fillText((admP==1?'Donner un skin à ':'Donner un personnage à ')+tag(admSel===(myPeer||'me')?'me':admSel),W/2,52);
-admItems().forEach(([n,v],k)=>{const r=admPk(k);g.fillStyle='#161d2a';g.fillRect(r.x,r.y,r.w,r.h);g.strokeStyle=inB(r,M.x,M.y)?'#fff':'#a55';g.lineWidth=2;g.strokeRect(r.x,r.y,r.w,r.h);g.fillStyle='#ffd9c9';g.font='14px'+F2;g.fillText(n,r.x+r.w/2,r.y+24)});
-g.fillStyle='#9aa7bd';g.font='13px'+F2;g.fillText('Clique pour donner — Échap pour revenir',W/2,H-34)}
+let admP=0,admPT=0,admToast=null;
+// admP : 1 skin · 2 perso · 3 skin de caisse · 4 caisse (donner) ; 11 · 12 · 13 · 14 (retirer) ; 15 = retirer un skin de perso (pack)
+const admRem=()=>admP>10,admK=()=>admP%10;
+const ADMT=['Skin de perso','Skin d\'arme','Effet de pouvoir','Anim. de kill'],ADMTK='bwpk';
+const ADMTT={1:'un skin',2:'un personnage',3:'un skin de caisse',4:'une caisse',5:'un skin de perso'};
+const ADMACT={1:['givesk','remsk'],2:['givech','remch'],3:['givecw','remcw'],4:['givecr','remcr'],5:['givesk','remsk']};
+const admItems=()=>{const k=admK(),rem=admRem();
+if(k==1)return[...SKINS.map((s,i)=>[s.n,i]).slice(1),...(rem?[]:PACKS.map((q,i)=>['Pack '+q.n,100+i]))];
+if(k==5)return PACKS.map((q,i)=>['Pack '+q.n+' · '+CH[q.ch].n,100+i]);
+if(k==3)return typeof CAT!='undefined'?CAT.filter(it=>it.t==ADMTK[admPT]).map(it=>[it.n,it.i,CRT[it.r].c]):[];
+if(k==4)return typeof CRC!='undefined'?CRC.map((c,i)=>[c.n,i,c.c1]):[];
+return CH.map((c,i)=>[c.n,i])};
+const admPk=k=>({x:30+(k%5)*180,y:(admK()==3?136:92)+Math.floor(k/5)*46,w:172,h:38});
+const admTabR=i=>({x:30+i*180,y:68,w:172,h:30});
+function drawAdmPick(){const rem=admRem(),k=admK();g.setTransform(1,0,0,1,0,0);g.fillStyle='rgba(5,7,11,.98)';g.fillRect(0,0,W,H);g.textAlign='center';g.fillStyle=rem?'#ff7a7a':'#ffb347';g.font='bold 24px'+F2;
+g.fillText((rem?'Retirer ':'Donner ')+ADMTT[k]+' — cible : '+tag(admSel===(myPeer||'me')?'me':admSel),W/2,40);
+if(k==3)ADMT.forEach((t,i)=>{const r=admTabR(i),on=admPT==i;g.fillStyle=on?'#2b3a58':'#161d2a';g.fillRect(r.x,r.y,r.w,r.h);g.strokeStyle=on?'#fff':inB(r,M.x,M.y)?'#9ab':'#556';g.lineWidth=2;g.strokeRect(r.x,r.y,r.w,r.h);g.fillStyle='#f0e6d0';g.font=(on?'bold ':'')+'13px'+F2;g.fillText(t,r.x+r.w/2,r.y+20)});
+admItems().forEach(([n,v,c],q)=>{const r=admPk(q),h=inB(r,M.x,M.y);g.fillStyle=h?'#222c44':'#161d2a';g.fillRect(r.x,r.y,r.w,r.h);g.strokeStyle=h?'#fff':(c||(rem?'#a33':'#a55'));g.lineWidth=h?3:2;g.strokeRect(r.x,r.y,r.w,r.h);g.fillStyle=rem?'#ffc9c9':'#ffd9c9';g.font='13px'+F2;g.fillText(n,r.x+r.w/2,r.y+24)});
+if(admToast&&performance.now()<admToast.u){g.fillStyle='rgba(8,6,16,.92)';g.fillRect(W/2-230,H-70,460,28);g.strokeStyle=admToast.c;g.lineWidth=2;g.strokeRect(W/2-230,H-70,460,28);g.fillStyle='#fff';g.font='bold 14px'+F2;g.fillText(admToast.t,W/2,H-51)}
+g.fillStyle='#9aa7bd';g.font='13px'+F2;g.fillText('Clique pour '+(rem?'retirer':'donner')+' (le choix reste ouvert) — Échap pour revenir',W/2,H-20)}
+function admPickClick(){const k=admK(),rem=admRem();
+if(k==3)for(let i=0;i<4;i++)if(inB(admTabR(i),M.x,M.y)){admPT=i;return}
+admItems().forEach(([n,v],q)=>{if(inB(admPk(q),M.x,M.y)){admSend(ADMACT[k][rem?1:0],v);admToast={t:(rem?'− retiré : ':'+ donné : ')+n,c:rem?'#ff7a7a':'#7be3a5',u:performance.now()+1800}}})}
 const PRICE={1:25,2:25,3:25,4:25,7:25,8:25,9:25,11:25,12:25,13:25,14:40},PASSCH={0:10,5:16,6:22,10:30},ST={1:5,2:12,3:18,4:24,5:28},TIERS=30;
 const SKINS=[{n:'Classique',c:null},{n:'Néon',c:'#39ff88'},{n:'Or',c:'#ffd24a'},{n:'Givre',c:'#9fe6ff'},{n:'Lave',c:'#ff5a2a'},{n:'Royal',c:'#c36bff'},
 {n:'Rang Argent',c:'#c9d1dc',rk:1},{n:'Rang Or',c:'#ffd24a',rk:2},{n:'Rang Platine',c:'#4fb8ff',rk:3},{n:'Rang Diamant',c:'#b36bff',rk:4},{n:'Rang Ascendant',c:'#3ddc84',rk:5},{n:'Rang Immortal',c:'#ff3b3b',rk:6},{n:'Radiant',c:'#ffe58a',rk:7,an:1}];
@@ -277,8 +293,8 @@ if(!o||typeof o!='object'||!o.rk){feed.push({t:'Code de sauvegarde invalide',l:5
 if(!confirm('Remplacer ta progression actuelle par cette sauvegarde ?'))return;
 const uid=SV.uid,md=SV.mode;Object.assign(SV,o);SV.uid=uid;SV.mode=md;SV.br=Math.max(SV.br|0,(SV.rk.r|0));save();actPush();pres();postLB();feed.push({t:'Sauvegarde importée ✔',l:5})}}
 const tier=()=>Math.min(TIERS,Math.floor(SV.xp/100));
-const owned=i=>SV.bought.includes(i)||(PASSCH[i]!=null&&tier()>=PASSCH[i])||(CH[i].sec==1&&SV.xs>0)||(CH[i].sec==2&&SV.xc>0);
-const ownedSkin=i=>i==0||(ST[i]!=null&&tier()>=ST[i])||(!!SKINS[i].rk&&(SV.br|0)>=SKINS[i].rk)||SV.gs.includes(i);
+const owned=i=>!(SV.rc||[]).includes(i)&&(SV.bought.includes(i)||(PASSCH[i]!=null&&tier()>=PASSCH[i])||(CH[i].sec==1&&SV.xs>0)||(CH[i].sec==2&&SV.xc>0));
+const ownedSkin=i=>i==0||(!(SV.rs||[]).includes(i)&&((ST[i]!=null&&tier()>=ST[i])||(!!SKINS[i].rk&&(SV.br|0)>=SKINS[i].rk)||SV.gs.includes(i)));
 function reward(t){for(const i in PASSCH)if(PASSCH[i]==t)return{k:'ch',l:CH[i].n};for(const i in ST)if(ST[i]==t)return{k:'sk',l:SKINS[i].n};const v=3+(t%4)*2;return{k:'co',v,l:'+'+v}}
 function gain(xp,co){SV.coins+=co;SV.xp+=xp;const t=tier();while(SV.ct<t){SV.ct++;const r=reward(SV.ct);if(r.k=='co')SV.coins+=r.v;feed.push({t:'Palier '+SV.ct+' : '+(r.k=='co'?r.l+' pièces':r.l+' débloqué !'),l:6})}save()}
 const cardPos=i=>({x:24+(i%5)*184,y:140+Math.floor(i/5)*160,w:176,h:150});
@@ -450,15 +466,22 @@ const ADSEC=[
  {t:()=>'+100 XP',c:'#2a5a8a',f:()=>admSend('xp',100)},
  {t:()=>'+30 RR',c:'#6a3a9a',f:()=>admSend('rr',30)},
  {t:()=>'-30 RR',c:'#4a2a5a',f:()=>admSend('rr',-30)}]],
-['Cadeaux','#7ad0ff',[
- {t:()=>'🎨 Donner un skin',c:'#2a6a7a',f:()=>{if(admSel)admP=1}},
- {t:()=>'🛒 Donner un perso',c:'#2a6a7a',f:()=>{if(admSel)admP=2}}]],
-['Événement boss','#d36bff',[
+['Ajouter (donner)','#7ad0ff',[
+ {t:()=>'🛒 + Perso',c:'#2a6a7a',f:()=>{if(admSel)admP=2}},
+ {t:()=>'🎨 + Skin',c:'#2a6a7a',f:()=>{if(admSel)admP=1}},
+ {t:()=>'✨ + Skin de caisse',c:'#2a6a7a',f:()=>{if(admSel)admP=3}},
+ {t:()=>'🎁 + Caisse',c:'#2a6a7a',f:()=>{if(admSel)admP=4}}]],
+['Retirer','#ff9a6a',[
+ {t:()=>'🛒 − Perso',c:'#7a3a2a',f:()=>{if(admSel)admP=12}},
+ {t:()=>'🎨 − Skin',c:'#7a3a2a',f:()=>{if(admSel)admP=11}},
+ {t:()=>'🎭 − Skin de perso',c:'#7a3a2a',f:()=>{if(admSel)admP=15}},
+ {t:()=>'✨ − Skin de caisse',c:'#7a3a2a',f:()=>{if(admSel)admP=13}},
+ {t:()=>'🎁 − Caisse',c:'#7a3a2a',f:()=>{if(admSel)admP=14}}]],
+['Événement boss & danger','#d36bff',[
  {t:()=>'Événement : '+(BOSSUP?'ON':'OFF'),c:()=>BOSSUP?'#7a2a9a':'#3a2a4a',f:()=>net.send('ev',{on:BOSSUP?0:1})},
- {t:()=>'👹 Respawn boss',c:'#5a2a6a',f:()=>net.send('evspawn',{})}]],
-['Zone dangereuse','#ff4a4a',[
- {t:()=>'⚠ Réinitialiser le joueur',c:'#7a1a1a',f:()=>{if(admSel&&(typeof confirm!='function'||confirm('Réinitialiser le compte de ce joueur ? (pièces, XP, rang, personnages, skins)')))admSend('reset',0)}}]]];
-const ADLAY=(()=>{let y=108;const b=[],h=[];for(const[n,col,items]of ADSEC){h.push({n,col,y});y+=22;items.forEach((it,i)=>b.push({...it,x:360+(i%3)*194,y:y+Math.floor(i/3)*44,w:186,h:36}));y+=Math.ceil(items.length/3)*44+8}return{b,h}})();
+ {t:()=>'👹 Respawn boss',c:'#5a2a6a',f:()=>net.send('evspawn',{})},
+ {t:()=>'⚠ Réinitialiser',c:'#7a1a1a',f:()=>{if(admSel&&(typeof confirm!='function'||confirm('Réinitialiser le compte de ce joueur ? (pièces, XP, rang, personnages, skins, caisses)')))admSend('reset',0)}}]]];
+const ADLAY=(()=>{let y=108;const b=[],h=[];for(const[n,col,items]of ADSEC){h.push({n,col,y});y+=20;items.forEach((it,i)=>b.push({...it,x:360+(i%4)*144,y:y+Math.floor(i/4)*38,w:138,h:32}));y+=Math.ceil(items.length/4)*38+6}return{b,h}})();
 function drawAdmin(){
 const roster=admRoster(),s=admSelf();if(!roster.some(p=>p.id===admSel))admSel=s;
 const pages=Math.max(1,Math.ceil(roster.length/ADPP));if(admPg>=pages)admPg=pages-1;if(admPg<0)admPg=0;
@@ -483,7 +506,7 @@ g.textAlign='center';g.fillStyle='#8f9bb3';g.font='12px'+F2;g.fillText('Page '+(
 const tg=roster.find(p=>p.id===admSel),tn=admSel===s?'Toi':(tg?tg.n:'?');
 g.textAlign='left';g.fillStyle='#9aa7bd';g.font='14px'+F2;g.fillText('Cible des actions :',360,92);g.fillStyle='#ffb347';g.font='bold 18px'+F2;g.fillText(tn,500,93);
 for(const t of ADLAY.h){g.textAlign='left';g.fillStyle=t.col;g.font='bold 13px'+F2;g.fillText(t.n.toUpperCase(),360,t.y+12);g.fillRect(360+g.measureText(t.n.toUpperCase()).width+10,t.y+8,570-g.measureText(t.n.toUpperCase()).width-10,1.5)}
-for(const b of ADLAY.b){const h=inB(b,M.x,M.y);g.fillStyle=typeof b.c=='function'?b.c():b.c;g.globalAlpha=h?1:.85;adRR(b.x,b.y,b.w,b.h,8);g.fill();g.globalAlpha=1;g.strokeStyle=h?'#fff':'rgba(255,255,255,.25)';g.lineWidth=2;g.stroke();g.textAlign='center';g.fillStyle='#fff';g.font='bold 13px'+F2;g.fillText(b.t(),b.x+b.w/2,b.y+23)}
+for(const b of ADLAY.b){const h=inB(b,M.x,M.y);g.fillStyle=typeof b.c=='function'?b.c():b.c;g.globalAlpha=h?1:.85;adRR(b.x,b.y,b.w,b.h,8);g.fill();g.globalAlpha=1;g.strokeStyle=h?'#fff':'rgba(255,255,255,.25)';g.lineWidth=2;g.stroke();g.textAlign='center';g.fillStyle='#fff';g.font='bold 12px'+F2;g.fillText(b.t(),b.x+b.w/2,b.y+b.h/2+4)}
 g.textAlign='center';g.fillStyle='#8f9bb3';g.font='12px'+F2;g.fillText('Échap : retour aux paramètres',650,H-12);
 if(admP)drawAdmPick()}
 function admClick(){
@@ -498,14 +521,14 @@ function drawSt(){if(adm&&admOpen){drawAdmin();return}g.setTransform(1,0,0,1,0,0
 
 g.fillStyle='#9aa7bd';g.font='13px'+F2;g.fillText('O ou Échap pour fermer',W/2,H-10)}
 function admSend(a,v){if(!admSel)return;if(admSel===(myPeer||'me'))netAdm({act:a,v});else net.adm(admSel,a,v)}
-function stClick(){if(admP){admItems().forEach(([n,v],k)=>{if(inB(admPk(k),M.x,M.y)){admSend(admP==1?'givesk':'givech',v);admP=0}});return}if(admOpen&&adm){admClick();return}const A0=[0,1,2,3].findIndex(i=>(i<3||adm)&&inB(acR(i),M.x,M.y));if(A0>=0){if(A0==3)admOpen=1;else acClick(A0);return}const R0=[0,1,2,3,4].findIndex(i=>inB(stR(i),M.x,M.y));
+function stClick(){if(admP){admPickClick();return}if(admOpen&&adm){admClick();return}const A0=[0,1,2,3].findIndex(i=>(i<3||adm)&&inB(acR(i),M.x,M.y));if(A0>=0){if(A0==3)admOpen=1;else acClick(A0);return}const R0=[0,1,2,3,4].findIndex(i=>inB(stR(i),M.x,M.y));
 if(R0==0){const v=prompt('Ton pseudo (14 caractères max)',SV.name);if(v&&v.trim()){SV.name=v.trim().slice(0,14);save();pres()}}
 else if(R0==1){SV.track=(SV.track+1)%TRACKS.length;save();restartMusic()}
 else if(R0==2){SV.vol=SV.vol>=1?.2:Math.round((SV.vol+.2)*10)/10;save();setVol()}
 else if(R0==3&&!adm){const k=prompt('Clé admin');if(k)net.adminLogin(k)}else if(R0==4){SV.ctl=SV.ctl?0:1;save()}
 }
 function netAdmin(ok){adm=ok;feed.push({t:ok?'Mode admin activé':'Clé refusée',l:4})}
-function netAdm(d){const a=d.act,v=+d.v||0;if(a=='god'){me.god=me.god?0:1;feed.push({t:me.god?'God mode activé (admin)':'God mode désactivé',l:4});pres()}else if(a=='givech'){const i=v|0;if(i>=0&&i<CH.length&&!owned(i)){SV.bought.push(i);save()}feed.push({t:'Personnage offert : '+(CH[i]?CH[i].n:'?'),l:5})}else if(a=='givesk'){const i=v|0;if(i>=100&&PACKS[i-100]){const q=PACKS[i-100];if(!SV.packs.includes(q.id))SV.packs.push(q.id);SV.eq[q.id]=1;feed.push({t:'Skin offert : Pack '+q.n,l:5})}else if(SKINS[i]&&i>0){if(!SV.gs.includes(i))SV.gs.push(i);SV.skin=i;feed.push({t:'Skin offert : '+SKINS[i].n,l:5})}save();pres()}else if(a=='kill'){me.pt=null;me.inv=0;me.ri=0;if(me.al)hurtMe(9999,'env')}else if(a=='heal'){if(me.al)me.hp=CH[me.c].hp}else if(a=='coins'){SV.coins=Math.max(0,SV.coins+v);save()}else if(a=='xp'){if(v>=0)gain(v,0);else{SV.xp=Math.max(0,SV.xp+v);save()}}else if(a=='rr'){applyRR(v);feed.push({t:(v>=0?'+':'')+v+' RR (admin)',l:4});postLB()}else if(a=='reset'){SV.coins=25;SV.xp=0;SV.ct=0;SV.bought=[];SV.skin=0;SV.packs=[];SV.eq={};SV.gs=[];SV.xs=0;SV.xc=0;SV.br=0;SV.cw=[];SV.cq={};SV.ci={};SV.rk={r:0,d:0,rr:0};save();if(me.al){me.al=0;mode=0;clrTp()}me.pt=null;feed.push({t:'Ton compte a été réinitialisé',l:5});pres()}}
+function netAdm(d){const a=d.act,v=+d.v||0;if(a=='god'){me.god=me.god?0:1;feed.push({t:me.god?'God mode activé (admin)':'God mode désactivé',l:4});pres()}else if(a=='givech'){const i=v|0;if(i>=0&&i<CH.length){if(SV.rc)SV.rc=SV.rc.filter(x=>x!==i);if(!owned(i))SV.bought.push(i);save()}feed.push({t:'Personnage offert : '+(CH[i]?CH[i].n:'?'),l:5})}else if(a=='givesk'){const i=v|0;if(i>=100&&PACKS[i-100]){const q=PACKS[i-100];if(!SV.packs.includes(q.id))SV.packs.push(q.id);SV.eq[q.id]=1;feed.push({t:'Skin offert : Pack '+q.n,l:5})}else if(SKINS[i]&&i>0){SV.rs=(SV.rs||[]).filter(x=>x!==i);if(!SV.gs.includes(i))SV.gs.push(i);SV.skin=i;feed.push({t:'Skin offert : '+SKINS[i].n,l:5})}save();pres()}else if(a=='givecr'){const i=v|0;if(typeof CRC!='undefined'&&CRC[i]){crInit();SV.ci[i]=(SV.ci[i]|0)+1;save();feed.push({t:'Caisse offerte : '+CRC[i].n+' (touche C)',l:5})}}else if(a=='remcr'){const i=v|0;if(typeof CRC!='undefined'&&CRC[i]){crInit();const n=SV.ci[i]|0;SV.ci[i]=Math.max(0,n-1);save();feed.push({t:n>0?'Caisse retirée : '+CRC[i].n:'Tu n\'avais aucune '+CRC[i].n,l:5})}}else if(a=='givecw'){const it=typeof CAT!='undefined'?CAT[v|0]:null;if(it){crInit();if(!SV.cw.includes(it.i))SV.cw.push(it.i);save();feed.push({t:'Skin de caisse offert : '+it.n,l:5})}}else if(a=='remcw'){const it=typeof CAT!='undefined'?CAT[v|0]:null;if(it){crInit();const k=SV.cw.indexOf(it.i);if(k>=0)SV.cw.splice(k,1);if(SV.cq[it.t]==it.i)SV.cq[it.t]=-1;save();pres();feed.push({t:'Skin de caisse retiré : '+it.n,l:5})}}else if(a=='remch'){const i=v|0;if(CH[i]){SV.bought=SV.bought.filter(x=>x!==i);if(!SV.rc)SV.rc=[];if(!SV.rc.includes(i))SV.rc.push(i);if(SV.sel===i)SV.sel=-1;if(me.al&&me.c===i){me.al=0;mode=0;clrTp()}save();pres();feed.push({t:'Personnage retiré : '+CH[i].n,l:5})}}else if(a=='remsk'){const i=v|0;if(i>=100&&PACKS[i-100]){const q=PACKS[i-100];SV.packs=SV.packs.filter(x=>x!==q.id);delete SV.eq[q.id];feed.push({t:'Skin de perso retiré : Pack '+q.n,l:5})}else if(SKINS[i]&&i>0){SV.gs=SV.gs.filter(x=>x!==i);if(!SV.rs)SV.rs=[];if(!SV.rs.includes(i))SV.rs.push(i);if(SV.skin==i)SV.skin=0;feed.push({t:'Skin retiré : '+SKINS[i].n,l:5})}save();pres()}else if(a=='kill'){me.pt=null;me.inv=0;me.ri=0;if(me.al)hurtMe(9999,'env')}else if(a=='heal'){if(me.al)me.hp=CH[me.c].hp}else if(a=='coins'){SV.coins=Math.max(0,SV.coins+v);save()}else if(a=='xp'){if(v>=0)gain(v,0);else{SV.xp=Math.max(0,SV.xp+v);save()}}else if(a=='rr'){applyRR(v);feed.push({t:(v>=0?'+':'')+v+' RR (admin)',l:4});postLB()}else if(a=='reset'){SV.coins=25;SV.xp=0;SV.ct=0;SV.bought=[];SV.skin=0;SV.packs=[];SV.eq={};SV.gs=[];SV.xs=0;SV.xc=0;SV.br=0;SV.cw=[];SV.cq={};SV.ci={};SV.rc=[];SV.rs=[];SV.rk={r:0,d:0,rr:0};save();if(me.al){me.al=0;mode=0;clrTp()}me.pt=null;feed.push({t:'Ton compte a été réinitialisé',l:5});pres()}}
 const PACKS=[
 {id:'hal',n:'Halloween',ch:4,p:60,col:'#ff7a1a',d:'Citrouille maudite. Le flash de Corona affiche un SCREAMER !'},
 {id:'cyb',n:'Cyber',ch:1,p:40,col:'#16c7e8',d:'Nitro cybernétique : visière et néons'},

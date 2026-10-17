@@ -67,7 +67,7 @@ function crRoll(ci) {
 }
 function crBuy(ci) {
   crInit(); const C = CRC[ci];
-  if (C.top) { if (!(SV.ci[ci] > 0)) return; SV.ci[ci]--; } else { if (SV.coins < C.p) { feed.push({ t: 'Pas assez de pièces', l: 3 }); return } SV.coins -= C.p }
+  if ((SV.ci[ci] | 0) > 0) SV.ci[ci]--; else if (C.top) return; else { if (SV.coins < C.p) { feed.push({ t: 'Pas assez de pièces', l: 3 }); return } SV.coins -= C.p }
   const it = crRoll(ci), dup = SV.cw.includes(it.i);
   if (dup) SV.coins += CRT[it.r].v; else SV.cw.push(it.i);
   crOp = { ci, it, dup, t0: performance.now(), eq: SV.cq[it.t] == it.i }; save(); pres();
@@ -277,7 +277,7 @@ function crRays(x, y, col, n, t, len) { g.save(); g.translate(x, y); g.rotate(t 
 function crShop() {
   g.textAlign = 'center'; g.fillStyle = '#ffd98a'; g.font = 'bold 15px' + F2;
   CRC.forEach((C, i) => {
-    const p = crCardR(i), hv = inB(p, M.x, M.y), top = !!C.top, n = top ? (SV.ci[i] | 0) : 0, t = tt;
+    const p = crCardR(i), hv = inB(p, M.x, M.y), top = !!C.top, n = SV.ci[i] | 0, t = tt;
     g.fillStyle = '#121826'; g.fillRect(p.x, p.y, p.w, p.h); g.strokeStyle = top ? (i == 4 ? 'hsl(' + ((t * 120) % 360) + ',90%,65%)' : '#ffd24a') : C.c1; g.lineWidth = hv ? 4 : 2; g.strokeRect(p.x, p.y, p.w, p.h);
     crChest(p.x + 88, p.y + 84, 1.15, C.c1, C.c2, 0, .35 + .25 * Math.sin(t * 2 + i) + i * .06);
     if (i >= 1) for (let j = 0; j < i * 2; j++) { const a = t * (1 + i * .3) + j * 6.283 / (i * 2); crShape('star', p.x + 88 + Math.cos(a) * 62, p.y + 80 + Math.sin(a) * 40, 3 + i * .4, C.c2, .8, t * 3) }
@@ -286,7 +286,7 @@ function crShop() {
     let y = p.y + 204; g.textAlign = 'left'; g.font = '12px' + F2;
     C.w.forEach((w, r) => { if (!w) return; g.fillStyle = CRT[r].c; g.fillText(CRT[r].n, p.x + 14, y); g.textAlign = 'right'; g.fillText(w + ' %', p.x + p.w - 14, y); g.textAlign = 'left'; y += 18 });
     g.fillStyle = '#9aa7bd'; g.font = '11px' + F2; if (top) { g.fillText('Skins exclusifs + animations', p.x + 14, y + 6); g.fillText('de kill (kill = animation)', p.x + 14, y + 20) } else g.fillText('Perso · Arme · Pouvoir', p.x + 14, y + 6);
-    if (top) crBtn(crBuyR(i), n > 0 ? 'Ouvrir (x' + n + ')' : '🔒 ' + C.d, '#ffd24a', n > 0); else crBtn(crBuyR(i), C.p + ' pièces — acheter', '#7ad0ff', SV.coins >= C.p);
+    if (n > 0) crBtn(crBuyR(i), 'Ouvrir (x' + n + ')', '#ffd24a'); else if (top) crBtn(crBuyR(i), '🔒 ' + C.d, '#ffd24a', false); else crBtn(crBuyR(i), C.p + ' pièces — acheter', '#7ad0ff', SV.coins >= C.p);
   });
   g.textAlign = 'center'; g.fillStyle = '#9aa7bd'; g.font = '13px' + F2;
   g.fillText('Fais Top 1 (3 kills minimum) en Classique → Caisse Champion · Top 1 en Classé → Caisse Radiant. Doublon = pièces rendues.', W / 2, 496);
@@ -359,7 +359,7 @@ function crOpen() {
   g.fillStyle = '#f0e6d0'; g.font = 'bold 34px' + F2; g.fillText(it.n, W / 2, 380);
   g.font = 'bold 18px' + F2; if (o.dup) { g.fillStyle = '#e9d9a8'; g.fillText('Doublon : +' + CRT[it.r].v + ' pièces', W / 2, 412) } else { g.fillStyle = '#7dff9a'; g.fillText('NOUVEAU !', W / 2, 412) }
   if (SV.cq[it.t] != it.i) crBtn(crEqR, 'Équiper', '#3fcf5a'); crBtn(crOkR, 'OK', '#7ad0ff');
-  const n = (CRC[o.ci].top ? (SV.ci[o.ci] | 0) : 0); if (n > 0) { g.fillStyle = '#9aa7bd'; g.font = '13px' + F2; g.fillText('Il te reste ' + n + ' ' + CRC[o.ci].n + ' à ouvrir', W / 2, 520) }
+  const n = (SV.ci[o.ci] | 0); if (n > 0) { g.fillStyle = '#9aa7bd'; g.font = '13px' + F2; g.fillText('Il te reste ' + n + ' ' + CRC[o.ci].n + ' à ouvrir', W / 2, 520) }
 }
 function crDraw() {
   crInit(); g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = 1; g.fillStyle = 'rgba(5,7,11,.98)'; g.fillRect(0, 0, W, H);
