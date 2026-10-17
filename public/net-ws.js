@@ -3,6 +3,7 @@
   let offset = 0, my = '', ws;
   net.now = () => Date.now() + offset;
   net.send = (t, d) => { if (ws && ws.readyState === 1) ws.send(JSON.stringify({ t, d })); };
+  net.up = () => (ws && ws.readyState === 1 ? 1 : 0);
   net.presence = (p) => net.send('presence', p);
   net.adminLogin = (k) => net.send('admin_login', k);
   net.adm = (to, act, v) => net.send('adm', { to, act, v });
@@ -17,9 +18,10 @@
       else if (m.t === 'adm') netAdm(m.d);
       else if (m.t === 'sync') offset = m.time - Date.now();
       else if (m.t === 'lb') netLB(m.list);
+      else if (m.t === 'cnt') netCounts(m.d.c, m.d.b);
       else netEvent(m.t, m.d, m.from);
     };
-    ws.onopen = () => net.send('lb_get');
+    ws.onopen = () => { net.send('lb_get'); netOpen(); };
     ws.onclose = () => setTimeout(connect, 2000);
   }
   connect();
