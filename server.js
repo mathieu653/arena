@@ -27,12 +27,13 @@ const num = (v) => (Number.isFinite(+v) ? +v : 0);
 const ADMIN = process.env.ADMIN_KEY || 'math'; // code admin par défaut : « math » (change-le avec la variable d'environnement ADMIN_KEY)
 const EV = 2;
 
-// Classement (top 10, tous rangs confondus) : score = rang*100 + RR. En mémoire + leaderboard.json
+// Classement (top 10, tous rangs confondus) : score = (rang*3 + stade)*100 + RR (Radiant = 2200 + RR, sans stade). En mémoire + leaderboard.json
 // (sur l'offre gratuite de Render, le disque est effacé à chaque redéploiement)
 const LBFILE = path.join(DATA, 'leaderboard.json');
 let LB = {}, lbDirty = false;
 try { LB = JSON.parse(fs.readFileSync(LBFILE, 'utf8')); } catch {}
 for (const u in LB) { const e = LB[u]; if (e && !e.v) { e.s = 700 + Math.max(0, num(e.best || e.rr)); e.v = 2; delete e.best; delete e.rr; lbDirty = true; } } // ancien format : Radiant uniquement
+for (const u in LB) { const e = LB[u]; if (e && e.v === 2) { const o = num(e.s), r = Math.floor(o / 100); e.s = r >= 7 ? 2200 + (o - 700) : r * 300 + (o % 100); e.v = 3; lbDirty = true; } } // v2 -> v3 : 3 stades par rang
 setInterval(() => { if (lbDirty) { lbDirty = false; try { fs.writeFileSync(LBFILE, JSON.stringify(LB)); } catch {} } }, 30000);
 
 
@@ -220,8 +221,8 @@ wss.on('connection', (ws, req) => {
       const uid = String(m.d.uid || '').slice(0, 24).replace(/[^\w-]/g, '');
       if (uid && Date.now() - (me.lbT || 0) > 3000) {
         me.lbT = Date.now(); me.uid = uid;
-        const r = Math.max(0, Math.min(7, num(m.d.r) | 0)), rr = Math.max(0, Math.min(r < 7 ? 99 : 9999, num(m.d.rr) | 0)), s = r * 100 + rr;
-        if (s > 0) LB[uid] = { name: String(m.d.name || '?').slice(0, 14), s, t: Date.now(), v: 2 };
+        const r = Math.max(0, Math.min(7, num(m.d.r) | 0)), dv = r < 7 ? Math.max(0, Math.min(2, num(m.d.d) | 0)) : 0, ix = r < 7 ? r * 3 + dv : 22, rr = Math.max(0, Math.min(ix < 22 ? 99 : 9999, num(m.d.rr) | 0)), s = ix * 100 + rr;
+        if (s > 0) LB[uid] = { name: String(m.d.name || '?').slice(0, 14), s, t: Date.now(), v: 3 };
         else delete LB[uid];
         lbDirty = true;
       }
