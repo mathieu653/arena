@@ -217,6 +217,12 @@ wss.on('connection', (ws, req) => {
       const tg = players.get(String(m.d.to));
       if (m.d.act === 'reset' && tg && tg.uid && LB[tg.uid]) { delete LB[tg.uid]; lbDirty = true; } // retire le joueur du classement
       if (tg && tg.ws.readyState === 1) tg.ws.send(JSON.stringify({ t: 'adm', d: { act: String(m.d.act).slice(0, 8), v: num(m.d.v) } }));
+    } else if (m.t === 'chat' && m.d) { // chat : relayé à tous les joueurs du même salon (l'expéditeur inclus)
+      const txt = String(m.d.txt || '').replace(/[\u0000-\u001f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 100), now = Date.now();
+      if (!txt || me.lobby < 0 || now - (me.chT || 0) < 700) return; // anti-spam : 1 message / 0,7 s
+      me.chT = now;
+      const out = JSON.stringify({ t: 'chat', d: { n: (me.presence && me.presence.n) || '?', txt, a: me.admin ? 1 : 0 }, from: id });
+      for (const p of players.values()) if (p.lobby === me.lobby) send(p.ws, out);
     } else if (m.t === 'lb_post' && m.d) {
       const uid = String(m.d.uid || '').slice(0, 24).replace(/[^\w-]/g, '');
       if (uid && Date.now() - (me.lbT || 0) > 3000) {

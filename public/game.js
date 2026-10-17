@@ -38,7 +38,8 @@ const K={},M={x:480,y:270,d:0};
 const me={x:800,y:1000,a:0,hp:0,c:0,k:0,cd:0,ab:0,iv:0,sh:0,al:0,ro:0,fl:0,dt:0,rx:0,ry:0,v:null,ri:0,rs:640,bn:0,bt:0,inv:0,pt:null,tc:0,bl:0,lz:0,rg:0,sc:0,fr:0,pl:0,dth:0,god:0,rdy:0,db:0,hs:0,sw:0,sn:0,bdm:0,sw2:0,vx:0,vy:0};
 const snd=(t,d)=>net.send(t,d);
 const tag=p=>p===myPeer||p==='me'?'Toi':String(p).startsWith('bot')?'Bot '+((+String(p).slice(4)||0)+1):p==='env'?'Environnement':p==='boss'?'Tong Tong Sahur':(R[p]&&R[p].n)||'J-'+String(p).slice(0,3);
-const fd=(a,b)=>feed.push({t:tag(a)+' ▸ '+tag(b),l:5});
+const fdHow=a=>{const c=(a===myPeer||a==='me')?me.c:(R[a]?R[a].c:-1);return c>=0&&CH[c]?' ('+CH[c].n+')':''};
+const fd=(a,b)=>feed.push({t:tag(a)+fdHow(a)+' ▸ '+tag(b),k:1,l:5});
 const ptc=(x,y,col)=>Pa.push({x,y,vx:(Math.random()-.5)*300,vy:(Math.random()-.5)*300,l:.5,col});
 function col(o,r){for(const w of WL.concat(DP.filter(q=>q.k=='bw').map(q=>[q.x-q.w/2,q.y-q.h/2,q.w,q.h]))){const cx=Math.max(w[0],Math.min(o.x,w[0]+w[2])),cy=Math.max(w[1],Math.min(o.y,w[1]+w[3])),dx=o.x-cx,dy=o.y-cy,d=Math.hypot(dx,dy);if(d<r){if(d>.01){o.x+=dx/d*(r-d);o.y+=dy/d*(r-d)}else o.y-=r}}}
 const hitW=(x,y)=>WL.some(w=>x>w[0]&&x<w[0]+w[2]&&y>w[1]&&y<w[1]+w[3])||DP.some(o=>o.k=='bw'&&x>o.x-o.w/2&&x<o.x+o.w/2&&y>o.y-o.h/2&&y<o.y+o.h/2);
@@ -111,7 +112,7 @@ if(me.sc>0)drawScream();
 drawTop();g.textAlign='right';g.fillStyle='#e9d9a8';g.fillText('● '+SV.coins+'  ·  Palier '+tier()+'  ·  B : Battle Pass  ·  M : musique',W-14,H-14);
 g.textAlign='left';g.font='13px Trebuchet MS,sans-serif';g.fillStyle='#8f9bb3';g.fillText(SV.mode==2?"Événement spécial — équipe : "+(nr()+1)+" joueur"+(nr()?"s":""):nr()?('En ligne : '+(Object.keys(R).length+1)+' joueurs'):'Seul : 2 bots t\'attendent. Partage le lien pour jouer à plusieurs.',14,22);
 const sc=[['Toi',me.k,SV.rk.r],...Object.keys(R).map(k=>[tag(k),R[k].k,R[k].rk])].sort((a,b)=>b[1]-a[1]);g.textAlign='right';sc.slice(0,6).forEach((s,i)=>{g.fillStyle=s[2]!=null?rankFill(s[2],W-70,130):'#c5cfe0';g.fillText(s[0]+(SV.mode==2?'':'  '+s[1]),W-14,22+i*17)});
-g.textAlign='left';feed.forEach((f,i)=>{g.fillStyle='rgba(240,225,200,'+Math.min(1,f.l)+')';g.fillText(f.t,14,46+i*16)});
+/* le feed (kills, paliers…) s'affiche maintenant dans le chat (chat.js) */
 if(me.al){const s=CH[me.c];g.fillStyle='#000a';g.fillRect(14,H-44,220,12);g.fillStyle='#6fd16f';g.fillRect(14,H-44,220*Math.max(0,me.hp/s.hp),12);if(me.bn>0){g.fillStyle='#b070ff';g.fillRect(14+220*Math.min(1,Math.max(0,me.hp)/s.hp),H-44,220*me.bn/s.hp,12)}g.fillStyle='#000a';g.fillRect(14,H-26,220,8);g.fillStyle=me.sn?'#ffd23a':me.ab<=0?'#7ad0ff':'#456';g.fillRect(14,H-26,220*(me.ab<=0||me.sn?1:Math.max(0,1-me.ab/s.acd)),8);g.fillStyle='#e6ecf5';g.fillText(s.n+(me.sn?' — 🎯 SNIPER ÉQUIPÉ : une seule balle':me.ab<=0?' — capacité prête (Maj / Espace / clic droit)':'')+(me.lz>0?'   ⚡ LASER '+Math.ceil(me.lz)+' s':'')+(me.hs>0?'   » VITESSE '+Math.ceil(me.hs)+' s':'')+(me.db>0?'   ✦ DÉGÂTS x2 '+Math.ceil(me.db)+' s':''),14,H-52)}
 if(mode!=1){drawSelScreen()}}
 function nr(){return Object.keys(R).length}
