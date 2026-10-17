@@ -72,17 +72,17 @@ const lobbyCast = (l, t, d, except) => { const out = JSON.stringify({ t, d }); f
 
 // ---------- Boss (événement spécial) ----------
 // Constantes à garder identiques à celles de public/game.js
-const SLR = 230, BSPD = 115;
+const SLR = 230, BSPD = 115, BREACH = 190, TSPD = 130;
 let evOn = 0, respawnAt = 0; // respawnAt : réapparition automatique du boss 10 min après sa mort
 const RESPAWN_MS = Number(process.env.RESPAWN_MS) || 10 * 60 * 1000;
 // Registre des boss : pour en ajouter un, déclare-le ici (PV + fonction tick) puis dans BOSSL de public/game.js
-const BOSSES = { magma: { hp0: 6000, hpN: 2500, tick: tickMagma } };
-const boss = { bt: 'magma', al: 0, x: 800, y: 600, a: 0, hp: 0, mh: 1, st: 0, tm: 0, dur: 1, mtcd: 6, en: 0 };
+const BOSSES = { magma: { hp0: 6000, hpN: 2500, tick: tickMagma }, tong: { hp0: 6000, hpN: 2500, tick: tickTong } };
+const boss = { bt: 'magma', al: 0, x: 800, y: 600, a: 0, hp: 0, mh: 1, st: 0, tm: 0, dur: 1, mtcd: 6, tpcd: 6, en: 0 };
 const clampB = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 function spawnBoss(type) {
   if (BOSSES[type]) boss.bt = type;
   const B = BOSSES[boss.bt], n = Math.max(1, inLobby(EV).length);
-  Object.assign(boss, { al: 1, x: 800, y: 600, a: 0, mh: B.hp0 + B.hpN * n, st: 0, tm: 0, dur: 1, mtcd: 6, en: 0 });
+  Object.assign(boss, { al: 1, x: 800, y: 600, a: 0, mh: B.hp0 + B.hpN * n, st: 0, tm: 0, dur: 1, mtcd: 6, tpcd: 6, en: 0 });
   boss.hp = boss.mh;
   respawnAt = 0;
   const ann = JSON.stringify({ t: 'ann', d: { b: boss.bt } }); // petit message arc-en-ciel pour tous les modes
@@ -154,6 +154,43 @@ function tickMagma(dt, alive, tg, bd) {
   } else if (boss.st === 2) { if (boss.tm >= boss.dur) { boss.st = 3; boss.tm = 0; boss.dur = en ? 0.5 : 0.8; } }
   else if (boss.st === 3) { if (boss.tm >= boss.dur) { boss.st = 0; boss.tm = 0; boss.dur = 1; } }
   else if (boss.tm >= boss.dur) { boss.st = 0; boss.tm = 0; boss.dur = 1; } // fin de l'incantation
+}
+
+// Tong Tong Sahur : gros coup de batte en arc de cercle (zone annoncée) + téléportation dans le dos d'un joueur
+// états : 0 marche · 1 préparation du coup · 2 coup · 3 récupération
+function tickTong(dt, alive, tg, bd) {
+  boss.en = 0;
+  const turn = (rate) => {
+    if (!tg) return;
+    const want = Math.atan2(tg.y - boss.y, tg.x - boss.x);
+    const df = ((want - boss.a + 3 * Math.PI) % (2 * Math.PI)) - Math.PI, m = rate * dt;
+    boss.a += Math.max(-m, Math.min(m, df));
+  };
+  boss.tm += dt;
+  boss.tpcd -= dt;
+  if (boss.st === 0 && boss.tpcd <= 0 && alive.length) { // téléportation dans le dos d'un joueur (au hasard), puis coup annoncé
+    const v = alive[Math.floor(Math.random() * alive.length)], d = 120;
+    boss.x = clampB(v.x - Math.cos(v.a) * d, 110, 1490); boss.y = clampB(v.y - Math.sin(v.a) * d, 110, 1090);
+    boss.a = Math.atan2(v.y - boss.y, v.x - boss.x);
+    boss.st = 1; boss.tm = 0; boss.dur = 0.7; boss.tpcd = 7 + Math.random() * 5;
+    lobbyCast(EV, 'btp', { x: Math.round(boss.x), y: Math.round(boss.y) });
+    sendBoss();
+    return;
+  }
+  if (boss.st === 0) {
+    turn(3.5);
+    if (tg) {
+      if (bd > BREACH * 0.6) { boss.x += Math.cos(boss.a) * TSPD * dt; boss.y += Math.sin(boss.a) * TSPD * dt; }
+      if (bd < BREACH - 25) { boss.st = 1; boss.tm = 0; boss.dur = 0.8; }
+    }
+  } else if (boss.st === 1) { // préparation du coup : zone rouge visible
+    turn(2.2);
+    if (boss.tm >= boss.dur) {
+      boss.st = 2; boss.tm = 0; boss.dur = 0.22;
+      lobbyCast(EV, 'bswing', { x: Math.round(boss.x), y: Math.round(boss.y), a: +boss.a.toFixed(2) });
+    }
+  } else if (boss.st === 2) { if (boss.tm >= boss.dur) { boss.st = 3; boss.tm = 0; boss.dur = 0.6; } }
+  else if (boss.tm >= boss.dur) { boss.st = 0; boss.tm = 0; boss.dur = 1; }
 }
 
 wss.on('connection', (ws, req) => {
