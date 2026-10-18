@@ -85,7 +85,7 @@ const clampB = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 function spawnBoss(type) {
   if (BOSSES[type]) boss.bt = type;
   const B = BOSSES[boss.bt], n = Math.max(1, inLobby(EV).length);
-  Object.assign(boss, { al: 1, x: 800, y: 600, a: 0, mh: B.hp0 + B.hpN * n, st: 0, tm: 0, dur: 1, mtcd: 6, tpcd: 6, en: 0, su: 6, ar: 0 });
+  Object.assign(boss, { ctl: null, ci: null, al: 1, x: 800, y: 600, a: 0, mh: B.hp0 + B.hpN * n, st: 0, tm: 0, dur: 1, mtcd: 6, tpcd: 6, en: 0, su: 6, ar: 0 });
   mins.length = 0;
   boss.hp = boss.mh;
   respawnAt = 0;
@@ -93,17 +93,29 @@ function spawnBoss(type) {
   for (const p of players.values()) send(p.ws, ann);
 }
 function killBoss() {
-  boss.al = 0; boss.hp = 0; mins.length = 0; respawnAt = Date.now() + RESPAWN_MS; cntDirty = true;
+  boss.al = 0; boss.ctl = null; boss.hp = 0; mins.length = 0; respawnAt = Date.now() + RESPAWN_MS; cntDirty = true;
   lobbyCast(EV, 'bossdead', { b: boss.bt });
   sendBoss();
 }
 function sendBoss() {
   lobbyCast(EV, 'boss', boss.al
-    ? { al: 1, bt: boss.bt, en: boss.en, x: Math.round(boss.x), y: Math.round(boss.y), a: +boss.a.toFixed(2), hp: Math.round(boss.hp), mh: boss.mh, st: boss.st, tp: +Math.min(1, boss.tm / boss.dur).toFixed(2), ar: Math.round(boss.ar || 0), m: boss.bt === 'necro' ? mins.map((q) => [q.id, Math.round(q.x), Math.round(q.y), Math.round(q.hp)]) : undefined }
+    ? { al: 1, bt: boss.bt, en: boss.en, x: Math.round(boss.x), y: Math.round(boss.y), a: +boss.a.toFixed(2), hp: Math.round(boss.hp), mh: boss.mh, st: boss.st, tp: +Math.min(1, boss.tm / boss.dur).toFixed(2), ar: Math.round(boss.ar || 0), ct: boss.ctl || undefined, m: boss.bt === 'necro' ? mins.map((q) => [q.id, Math.round(q.x), Math.round(q.y), Math.round(q.hp)]) : undefined }
     : { al: 0 });
 }
 function tickBoss(dt) {
   if (!boss.al) return;
+  if (boss.ctl) { // le boss est piloté par un admin : l'IA est suspendue
+    const cp = players.get(boss.ctl);
+    if (!cp || cp.lobby !== EV) boss.ctl = null;
+    else {
+      const al2 = [];
+      for (const p of inLobby(EV)) { const q = p.presence; if (q && q.al) al2.push(q); }
+      tickCtl(dt, al2);
+      boss.a = Math.atan2(Math.sin(boss.a), Math.cos(boss.a));
+      boss.x = clampB(boss.x, 110, 1490); boss.y = clampB(boss.y, 110, 1090);
+      return;
+    }
+  }
   let tg = null, bd = 1e9;
   const alive = [];
   for (const p of inLobby(EV)) {
@@ -117,6 +129,74 @@ function tickBoss(dt) {
   boss.a = Math.atan2(Math.sin(boss.a), Math.cos(boss.a));
   boss.x = clampB(boss.x, 110, 1490); boss.y = clampB(boss.y, 110, 1090);
 }
+// Boss piloté par un admin (touches : déplacement + clic = attaque principale, Maj/Espace = attaque spéciale)
+// Utilise les mêmes états (st / tm / dur) que l'IA : les clients affichent donc les mêmes zones annoncées.
+function stepMins(dt, alive, fin) {
+  for (const m of mins) {
+    let t2 = null, d2 = 1e9;
+    for (const q of alive) { const d = Math.hypot(q.x - m.x, q.y - m.y); if (d < d2) { d2 = d; t2 = q; } }
+    if (t2 && d2 > 4) { const sp = MINSPD * (fin ? 1.3 : 1) * dt; m.x += (t2.x - m.x) / d2 * sp; m.y += (t2.y - m.y) / d2 * sp; }
+    for (const o of mins) if (o !== m) { const dx = m.x - o.x, dy = m.y - o.y, dd = Math.hypot(dx, dy); if (dd > 0.01 && dd < MINR * 2) { m.x += dx / dd * 40 * dt; m.y += dy / dd * 40 * dt; } }
+    m.x = clampB(m.x, 40, 1560); m.y = clampB(m.y, 40, 1160);
+  }
+}
+function tickCtl(dt, alive) {
+  const t = boss.bt, c = boss.ci || (boss.ci = { dx: 0, dy: 0, a: boss.a, k: 0 });
+  const en = t !== 'tong' && boss.hp < boss.mh * 0.5, fin = t === 'necro' && boss.hp < boss.mh * 0.35;
+  boss.en = en ? 1 : 0;
+  if (t === 'necro') { boss.ar = fin ? Math.max(AR1, (boss.ar || AR0) - (AR0 - AR1) / AR_T * dt) : 0; stepMins(dt, alive, fin); }
+  boss.tm += dt; boss.mtcd -= dt; boss.tpcd -= dt; boss.su -= dt;
+  const k = c.k; c.k = 0;
+  if (boss.st === 0) {
+    boss.a = c.a;
+    const l = Math.hypot(c.dx, c.dy);
+    if (l > 0.01) {
+      const spd = t === 'tong' ? TSPD : t === 'necro' ? BSPD * 0.55 : BSPD * (en ? 1.4 : 1);
+      boss.x += c.dx / l * spd * dt; boss.y += c.dy / l * spd * dt;
+    }
+    if (k === 1) { boss.st = 1; boss.tm = 0; boss.dur = t === 'tong' ? 0.8 : (en ? 0.75 : 1); }
+    else if (k === 2) {
+      if (t === 'magma' && boss.mtcd <= 0) { // pluie de météores : un impact par joueur vivant + des impacts au hasard
+        boss.st = 4; boss.tm = 0; boss.dur = 1.3; boss.mtcd = en ? 6 : 9;
+        const pts = [], n = Math.min(12, alive.length + (en ? 5 : 3));
+        for (let i = 0; i < n; i++) {
+          const v = alive.length ? alive[i % alive.length] : boss, rnd = !alive.length || i >= alive.length;
+          pts.push([Math.round(clampB(v.x + (rnd ? (Math.random() - 0.5) * 300 : 0), 60, 1540)), Math.round(clampB(v.y + (rnd ? (Math.random() - 0.5) * 300 : 0), 60, 1140))]);
+        }
+        lobbyCast(EV, 'bmeteor', { p: pts });
+        sendBoss();
+      } else if (t === 'tong' && boss.tpcd <= 0 && alive.length) { // téléportation dans le dos du joueur le plus proche, puis coup annoncé
+        let v = alive[0], bd = 1e9;
+        for (const q of alive) { const d = Math.hypot(q.x - boss.x, q.y - boss.y); if (d < bd) { bd = d; v = q; } }
+        boss.x = clampB(v.x - Math.cos(v.a) * 120, 110, 1490); boss.y = clampB(v.y - Math.sin(v.a) * 120, 110, 1090);
+        boss.a = Math.atan2(v.y - boss.y, v.x - boss.x);
+        boss.st = 1; boss.tm = 0; boss.dur = 0.7; boss.tpcd = 5;
+        lobbyCast(EV, 'btp', { x: Math.round(boss.x), y: Math.round(boss.y) });
+        sendBoss();
+      } else if (t === 'necro' && boss.su <= 0 && mins.length < MINMAX - 2) { // incantation des sbires
+        boss.st = 4; boss.tm = 0; boss.dur = 1.4; boss.su = fin ? 6 : 9;
+        lobbyCast(EV, 'bsummon', { x: Math.round(boss.x), y: Math.round(boss.y) });
+        sendBoss();
+      }
+    }
+  } else if (boss.st === 1) { // préparation du coup : la zone annoncée est visible
+    boss.a = c.a;
+    if (boss.tm >= boss.dur) {
+      boss.st = 2; boss.tm = 0; boss.dur = t === 'tong' ? 0.22 : 0.25;
+      lobbyCast(EV, 'bswing', { x: Math.round(boss.x), y: Math.round(boss.y), a: +boss.a.toFixed(2) });
+    }
+  } else if (boss.st === 2) { if (boss.tm >= boss.dur) { boss.st = 3; boss.tm = 0; boss.dur = t === 'tong' ? 0.6 : (en && t === 'magma' ? 0.5 : 0.8); } }
+  else if (boss.st === 3) { if (boss.tm >= boss.dur) { boss.st = 0; boss.tm = 0; boss.dur = 1; } }
+  else if (boss.tm >= boss.dur) { // fin de l'incantation
+    if (t === 'necro') {
+      const n = Math.min(MINMAX - mins.length, 3 + Math.min(alive.length, 4) + (en ? 2 : 0));
+      for (let i = 0; i < n; i++) { const a = Math.random() * 6.283; mins.push({ id: ++minId, x: clampB(boss.x + Math.cos(a) * 95, 40, 1560), y: clampB(boss.y + Math.sin(a) * 95, 40, 1160), hp: MINHP }); }
+    }
+    boss.st = 0; boss.tm = 0; boss.dur = 1;
+    sendBoss();
+  }
+}
+
 // Magmaar : poing écrasant (zone circulaire annoncée), pluie de météores (impacts annoncés), rage sous 50 % de PV
 // états : 0 marche · 1 préparation du coup · 2 impact · 3 récupération · 4 incantation des météores
 function tickMagma(dt, alive, tg, bd) {
@@ -317,10 +397,24 @@ wss.on('connection', (ws, req) => {
     } else if (m.t === 'ev' && me.admin) { // activer / désactiver l'événement spécial
       evOn = m.d && m.d.on ? 1 : 0;
       if (evOn && !boss.al) spawnBoss();
-      if (!evOn && boss.al) { boss.al = 0; sendBoss(); }
+      if (!evOn && boss.al) { boss.al = 0; boss.ctl = null; sendBoss(); }
       cntDirty = true;
     } else if (m.t === 'evkill' && me.admin) { // tuer le boss (test des récompenses)
       if (boss.al) killBoss();
+    } else if (m.t === 'bpos' && me.admin) { // l'admin incarne le boss (ou le rend à l'IA)
+      if (m.d && m.d.on) {
+        if (me.lobby !== EV) return;
+        evOn = 1;
+        const want = m.d.b && BOSSES[m.d.b] ? m.d.b : boss.bt;
+        if (!boss.al || m.d.b) spawnBoss(want);
+        boss.ctl = id; boss.ci = { dx: 0, dy: 0, a: boss.a, k: 0 };
+        cntDirty = true; sendBoss();
+      } else if (boss.ctl === id) { boss.ctl = null; boss.ci = null; sendBoss(); }
+    } else if (m.t === 'bctl' && me.admin && boss.ctl === id && m.d && boss.ci) { // commandes du boss piloté
+      const d = m.d;
+      boss.ci.dx = Math.max(-1, Math.min(1, num(d.dx))); boss.ci.dy = Math.max(-1, Math.min(1, num(d.dy)));
+      boss.ci.a = num(d.a);
+      if (d.k === 1 || d.k === 2) boss.ci.k = d.k;
     } else if (m.t === 'evspawn' && me.admin) { // faire réapparaître le boss
       evOn = 1; spawnBoss(m.d && m.d.b); cntDirty = true;
     } else if (m.t === 'admin_login') {
@@ -359,7 +453,7 @@ wss.on('connection', (ws, req) => {
       for (const [pid, p] of players) if (pid !== id && p.lobby === me.lobby && p.ws.readyState === 1) p.ws.send(out);
     }
   });
-  ws.on('close', () => { players.delete(id); dirty = true; cntDirty = true; });
+  ws.on('close', () => { if (boss.ctl === id) boss.ctl = null; players.delete(id); dirty = true; cntDirty = true; });
 });
 
 // Présence : chaque joueur ne reçoit que les joueurs de son salon
