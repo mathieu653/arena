@@ -76,26 +76,30 @@ const SLR = 230, BSPD = 115, BREACH = 190, TSPD = 130;
 let evOn = 0, respawnAt = 0; // respawnAt : réapparition automatique du boss 10 min après sa mort
 const RESPAWN_MS = Number(process.env.RESPAWN_MS) || 10 * 60 * 1000;
 // Registre des boss : pour en ajouter un, déclare-le ici (PV + fonction tick) puis dans BOSSL de public/game.js
-const BOSSES = { magma: { hp0: 6000, hpN: 2500, tick: tickMagma }, tong: { hp0: 6000, hpN: 2500, tick: tickTong } };
-const boss = { bt: 'magma', al: 0, x: 800, y: 600, a: 0, hp: 0, mh: 1, st: 0, tm: 0, dur: 1, mtcd: 6, tpcd: 6, en: 0 };
+const BOSSES = { magma: { hp0: 6000, hpN: 2500, tick: tickMagma }, tong: { hp0: 6000, hpN: 2500, tick: tickTong }, necro: { hp0: 6000, hpN: 2500, tick: tickNecro } };
+const boss = { bt: 'magma', al: 0, x: 800, y: 600, a: 0, hp: 0, mh: 1, st: 0, tm: 0, dur: 1, mtcd: 6, tpcd: 6, en: 0, su: 6, ar: 0 };
+// Nécro-Sire : sbires invoqués (simulés ici) et arène qui rétrécit (rayon boss.ar autour de ARC_X/ARC_Y)
+const ARC_X = 800, ARC_Y = 600, AR0 = 540, AR1 = 175, AR_T = 45, MINHP = 55, MINSPD = 105, MINMAX = 12, MINR = 16;
+const mins = []; let minId = 0;
 const clampB = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 function spawnBoss(type) {
   if (BOSSES[type]) boss.bt = type;
   const B = BOSSES[boss.bt], n = Math.max(1, inLobby(EV).length);
-  Object.assign(boss, { al: 1, x: 800, y: 600, a: 0, mh: B.hp0 + B.hpN * n, st: 0, tm: 0, dur: 1, mtcd: 6, tpcd: 6, en: 0 });
+  Object.assign(boss, { al: 1, x: 800, y: 600, a: 0, mh: B.hp0 + B.hpN * n, st: 0, tm: 0, dur: 1, mtcd: 6, tpcd: 6, en: 0, su: 6, ar: 0 });
+  mins.length = 0;
   boss.hp = boss.mh;
   respawnAt = 0;
   const ann = JSON.stringify({ t: 'ann', d: { b: boss.bt } }); // petit message arc-en-ciel pour tous les modes
   for (const p of players.values()) send(p.ws, ann);
 }
 function killBoss() {
-  boss.al = 0; boss.hp = 0; respawnAt = Date.now() + RESPAWN_MS; cntDirty = true;
+  boss.al = 0; boss.hp = 0; mins.length = 0; respawnAt = Date.now() + RESPAWN_MS; cntDirty = true;
   lobbyCast(EV, 'bossdead', { b: boss.bt });
   sendBoss();
 }
 function sendBoss() {
   lobbyCast(EV, 'boss', boss.al
-    ? { al: 1, bt: boss.bt, en: boss.en, x: Math.round(boss.x), y: Math.round(boss.y), a: +boss.a.toFixed(2), hp: Math.round(boss.hp), mh: boss.mh, st: boss.st, tp: +Math.min(1, boss.tm / boss.dur).toFixed(2) }
+    ? { al: 1, bt: boss.bt, en: boss.en, x: Math.round(boss.x), y: Math.round(boss.y), a: +boss.a.toFixed(2), hp: Math.round(boss.hp), mh: boss.mh, st: boss.st, tp: +Math.min(1, boss.tm / boss.dur).toFixed(2), ar: Math.round(boss.ar || 0), m: boss.bt === 'necro' ? mins.map((q) => [q.id, Math.round(q.x), Math.round(q.y), Math.round(q.hp)]) : undefined }
     : { al: 0 });
 }
 function tickBoss(dt) {
@@ -193,6 +197,54 @@ function tickTong(dt, alive, tg, bd) {
   else if (boss.tm >= boss.dur) { boss.st = 0; boss.tm = 0; boss.dur = 1; }
 }
 
+// Nécro-Sire : invoque des sbires qui poursuivent les joueurs, onde de mort au corps à corps,
+// invocations plus rapides sous 50 % de PV, et sous 35 % l'arène se referme (zone sûre qui rétrécit)
+// états : 0 marche · 1 préparation de l'onde · 2 onde · 3 récupération · 4 incantation (les sbires apparaissent à la fin)
+function tickNecro(dt, alive, tg, bd) {
+  const en = boss.hp < boss.mh * 0.5, fin = boss.hp < boss.mh * 0.35;
+  boss.en = en ? 1 : 0;
+  boss.ar = fin ? Math.max(AR1, (boss.ar || AR0) - (AR0 - AR1) / AR_T * dt) : 0;
+  const turn = (rate) => {
+    if (!tg) return;
+    const want = Math.atan2(tg.y - boss.y, tg.x - boss.x);
+    const df = ((want - boss.a + 3 * Math.PI) % (2 * Math.PI)) - Math.PI, m = rate * dt;
+    boss.a += Math.max(-m, Math.min(m, df));
+  };
+  for (const m of mins) { // les sbires poursuivent le joueur vivant le plus proche
+    let t2 = null, d2 = 1e9;
+    for (const q of alive) { const d = Math.hypot(q.x - m.x, q.y - m.y); if (d < d2) { d2 = d; t2 = q; } }
+    if (t2 && d2 > 4) { const sp = MINSPD * (fin ? 1.3 : 1) * dt; m.x += (t2.x - m.x) / d2 * sp; m.y += (t2.y - m.y) / d2 * sp; }
+    for (const o of mins) if (o !== m) { const dx = m.x - o.x, dy = m.y - o.y, dd = Math.hypot(dx, dy); if (dd > 0.01 && dd < MINR * 2) { m.x += dx / dd * 40 * dt; m.y += dy / dd * 40 * dt; } }
+    m.x = clampB(m.x, 40, 1560); m.y = clampB(m.y, 40, 1160);
+  }
+  boss.tm += dt;
+  boss.su -= dt;
+  if (boss.st === 0) {
+    turn(2.5);
+    if (boss.su <= 0 && alive.length && mins.length < MINMAX - 2) { // incantation : annoncée 1,4 s avant l'apparition des sbires
+      boss.st = 4; boss.tm = 0; boss.dur = 1.4;
+      boss.su = (fin ? 8 : en ? 11 : 15) + Math.random() * 3;
+      lobbyCast(EV, 'bsummon', { x: Math.round(boss.x), y: Math.round(boss.y) });
+      sendBoss();
+      return;
+    }
+    if (tg) {
+      if (bd > SLR * 0.6) { boss.x += Math.cos(boss.a) * BSPD * 0.55 * dt; boss.y += Math.sin(boss.a) * BSPD * 0.55 * dt; }
+      if (bd < SLR - 60) { boss.st = 1; boss.tm = 0; boss.dur = en ? 0.8 : 1; }
+    }
+  } else if (boss.st === 1) { // préparation : la zone grandit, il faut s'éloigner
+    turn(1.2);
+    if (boss.tm >= boss.dur) { boss.st = 2; boss.tm = 0; boss.dur = 0.25; lobbyCast(EV, 'bswing', { x: Math.round(boss.x), y: Math.round(boss.y) }); }
+  } else if (boss.st === 2) { if (boss.tm >= boss.dur) { boss.st = 3; boss.tm = 0; boss.dur = 0.8; } }
+  else if (boss.st === 3) { if (boss.tm >= boss.dur) { boss.st = 0; boss.tm = 0; boss.dur = 1; } }
+  else if (boss.tm >= boss.dur) { // fin de l'incantation : les sbires apparaissent autour du boss
+    const n = Math.min(MINMAX - mins.length, 3 + Math.min(alive.length, 4) + (en ? 2 : 0));
+    for (let i = 0; i < n; i++) { const a = Math.random() * 6.283; mins.push({ id: ++minId, x: clampB(boss.x + Math.cos(a) * 95, 40, 1560), y: clampB(boss.y + Math.sin(a) * 95, 40, 1160), hp: MINHP }); }
+    boss.st = 0; boss.tm = 0; boss.dur = 1;
+    sendBoss();
+  }
+}
+
 wss.on('connection', (ws, req) => {
   req.socket.setNoDelay(true);
   const id = 'p' + (++counter).toString(36);
@@ -252,6 +304,15 @@ wss.on('connection', (ws, req) => {
         const t = Date.now();
         if (t - (me.bdT || 0) > 1000) { me.bdT = t; me.bdN = 0; }
         if (++me.bdN <= 20) { boss.hp -= Math.max(0, Math.min(360, num(m.d.d))); if (boss.hp <= 0) killBoss(); }
+      }
+    } else if (m.t === 'md') { // dégâts infligés à un sbire de Nécro-Sire (lots envoyés par les clients)
+      if (me.lobby === EV && boss.al && boss.bt === 'necro' && m.d) {
+        const t = Date.now();
+        if (t - (me.mdT || 0) > 1000) { me.mdT = t; me.mdN = 0; }
+        if (++me.mdN <= 40) {
+          const k = mins.findIndex((q) => q.id === (m.d.i | 0));
+          if (k >= 0) { mins[k].hp -= Math.max(0, Math.min(120, num(m.d.d))); if (mins[k].hp <= 0) mins.splice(k, 1); }
+        }
       }
     } else if (m.t === 'ev' && me.admin) { // activer / désactiver l'événement spécial
       evOn = m.d && m.d.on ? 1 : 0;
