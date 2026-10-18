@@ -376,7 +376,7 @@ wss.on('connection', (ws, req) => {
       me.acc = null;
     } else if (m.t === 'join') {
       const l = num(m.d && m.d.m) | 0;
-      me.lobby = l >= 0 && l <= 2 ? l : -1;
+      me.lobby = l >= 0 && l <= 3 ? l : -1; // 0 classique, 1 classé, 2 événement, 3 survivant
       if (m.d && m.d.n) me.nm = String(m.d.n).slice(0, 14);
       cntDirty = true; dirty = true;
     } else if (m.t === 'bd') { // dégâts infligés au boss (envoyés par lots par les clients)
@@ -460,7 +460,7 @@ wss.on('connection', (ws, req) => {
 setInterval(() => {
   if (!dirty) return;
   dirty = false;
-  for (let l = 0; l <= 2; l++) {
+  for (let l = 0; l <= 3; l++) {
     const grp = [...players].filter(([, p]) => p.lobby === l);
     if (!grp.length) continue;
     const msg = JSON.stringify({ t: 'peers', list: grp.map(([pid, p]) => ({ id: pid, presence: p.presence })) });
@@ -493,7 +493,7 @@ let cntT = 0;
 setInterval(() => {
   if (!cntDirty && ++cntT < 4) return;
   cntDirty = false; cntT = 0;
-  const c = [0, 0, 0];
+  const c = [0, 0, 0, 0];
   for (const p of players.values()) if (p.lobby >= 0) c[p.lobby]++;
   const msg = JSON.stringify({ t: 'cnt', d: { c, b: evOn, a: boss.al, t: boss.bt, r: respawnAt && !boss.al ? Math.max(0, Math.ceil((respawnAt - Date.now()) / 1000)) : 0 } });
   for (const p of players.values()) send(p.ws, msg);
