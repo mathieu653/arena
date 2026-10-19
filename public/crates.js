@@ -5,15 +5,18 @@
 // ---------- Catalogue ----------
 const CRT = [ // paliers de rareté = niveau d'animation (0 = fixe … 4 = animation maximale)
   { n: 'Commun', c: '#9aa7bd', v: 5 }, { n: 'Rare', c: '#4fb8ff', v: 15 }, { n: 'Épique', c: '#b36bff', v: 45 },
-  { n: 'Légendaire', c: '#ffb02e', v: 120 }, { n: 'Mythique', c: '#ff4ad8', v: 300 }]; // v = pièces rendues en cas de doublon
+  { n: 'Légendaire', c: '#ffb02e', v: 120 }, { n: 'Mythique', c: '#ff4ad8', v: 300 }, { n: 'Secret', c: '#ff3d8b', v: 400 }]; // v = pièces rendues en cas de doublon
 const CRTH = [ // thèmes : nom, couleur 1, couleur 2, effet de particules
   ['Cobalt', '#3a7bff', '#a9d4ff', 'spark'], ['Braise', '#ff6a1a', '#ffd23a', 'flame'], ['Menthe', '#1fcf8a', '#bfffe8', 'spark'], ['Rubis', '#e0264a', '#ff9ab0', 'flame'],
   ['Orchidée', '#b04bff', '#f0c4ff', 'star'], ['Glace', '#5fc8ff', '#eafcff', 'snow'], ['Toxine', '#7ad62a', '#eaff9a', 'drip'], ['Ombre', '#34344e', '#9a9ac4', 'smoke'],
   ['Soleil', '#ffbf1f', '#fff4b0', 'star'], ['Océan', '#1698c0', '#8aefff', 'bubble'], ['Sakura', '#ff7fb0', '#ffe3ee', 'petal'], ['Foudre', '#ffe030', '#ffffff', 'bolt'],
-  ['Champion', '#ffcf33', '#fff6c4', 'crown'], ['Radiant', '#ff6adf', '#7affff', 'rainbow']];
+  ['Champion', '#ffcf33', '#fff6c4', 'crown'], ['Radiant', '#ff6adf', '#7affff', 'rainbow'],
+  // thèmes SECRETS (14 → 19) : le 4e champ est la « signature » animée du skin
+  ['Singularité', '#8a2cff', '#f1dcff', 'void'], ['Dragon Solaire', '#ff5a14', '#ffe27a', 'sun'], ['Zéro Absolu', '#3fd0ff', '#f2fdff', 'ice'],
+  ['Cyber Glitch', '#00f0ff', '#ff2bd6', 'glitch'], ['Aurore Boréale', '#27e8a2', '#b58cff', 'aurora'], ['Éclipse Divine', '#ffc83a', '#fff6d0', 'eclipse']];
 const CRTN = { b: ['Mat', 'Brillant', 'Prisme', 'Aura'], w: ['Simple', 'Néon', 'Cristal', 'Infernal'], p: ['Halo', 'Double halo', 'Orbite', 'Explosion'] };
-const CRTY = { b: 'Perso', w: 'Arme', p: 'Pouvoir', k: 'Kill' };
-const CRTL = { b: 'Skin de perso', w: 'Skin d\'arme', p: 'Effet de pouvoir', k: 'Animation de kill' };
+const CRTY = { b: 'Perso', w: 'Arme', p: 'Pouvoir', k: 'Kill', s: 'Secret' };
+const CRTL = { b: 'Skin de perso', w: 'Skin d\'arme', p: 'Effet de pouvoir', k: 'Animation de kill', s: 'Skin secret complet' };
 const CAT = [];
 (function () {
   const sets = [[0, 1, 2, 3], [4, 5, 6, 7], [8, 9, 10, 11], [1, 3, 5, 11]];
@@ -26,6 +29,11 @@ const CAT = [];
   [['Confettis', 2, 0, 'conf'], ['Âme libérée', 2, 0, 'soul'], ['Foudre', 3, 0, 'bolt'], ['Étoiles filantes', 3, 0, 'stars'],
    ['Explosion pixel', 3, 0, 'pixel'], ['Pluie de pétales', 3, 2, 'petal'], ['Couronne du champion', 4, 1, 'crown'], ['Supernova', 4, 2, 'nova']]
     .forEach(a => CAT.push({ t: 'k', n: a[0], r: a[1], x: a[2], k: a[3], th: a[2] == 2 ? 13 : a[2] == 1 ? 12 : a[1] >= 3 ? 11 : 8 }));
+  // SKINS SECRETS : un set complet (perso + arme + pouvoir + kill) qui remplace les 4 équipements d'un coup. Uniquement via la Caisse Secrète.
+  ['Singularité', 'Dragon Solaire', 'Zéro Absolu', 'Cyber Glitch', 'Aurore Boréale', 'Éclipse Divine'].forEach((n, j) => {
+    const th = 14 + j, mk = (t, o) => Object.assign({ t, r: 5, th, x: 0, n }, o);
+    CAT.push({ t: 's', r: 5, th, x: 0, n, v: { b: mk('b'), w: mk('w'), p: mk('p'), k: mk('k', { k: 'sec' }) } });
+  });
   CAT.forEach((it, i) => it.i = i);
 })();
 const CRC = [ // w = probabilités (%) par palier de rareté
@@ -33,7 +41,8 @@ const CRC = [ // w = probabilités (%) par palier de rareté
   { n: 'Caisse Argent', p: 90, c1: '#aab6c8', c2: '#ffffff', w: [15, 40, 35, 10, 0], d: 'Animations lumineuses' },
   { n: 'Caisse Or', p: 250, c1: '#ffc933', c2: '#fff2a8', w: [0, 10, 45, 45, 0], d: 'Animations spectaculaires' },
   { n: 'Caisse Champion', p: 0, c1: '#ffcf33', c2: '#ff8a1a', w: [0, 0, 35, 45, 20], top: 1, kx: 1, d: 'Top 1 en Classique' },
-  { n: 'Caisse Radiant', p: 0, c1: '#ff6adf', c2: '#7affff', w: [0, 0, 20, 45, 35], top: 2, kx: 2, d: 'Top 1 en Classé' }];
+  { n: 'Caisse Radiant', p: 0, c1: '#ff6adf', c2: '#7affff', w: [0, 0, 20, 45, 35], top: 2, kx: 2, d: 'Top 1 en Classé' },
+  { n: 'Caisse Secrète', p: 1000, c1: '#240a3d', c2: '#ff3d8b', w: [0, 0, 0, 0, 0], secret: 1, d: 'Skins secrets animés' }]; // se débloque quand TOUS les skins sont obtenus
 
 // ---------- État & sauvegarde ----------
 let crTab = 0, crOp = null, crWinInfo = null, crDone = -1, KFX = [], PFX = [], crLast = 0;
@@ -41,22 +50,27 @@ function crInit() {
   if (!Array.isArray(SV.cw)) SV.cw = [];
   if (!SV.cq || typeof SV.cq != 'object') SV.cq = {};
   if (!SV.ci || typeof SV.ci != 'object') SV.ci = {};
-  for (const t of ['b', 'w', 'p', 'k']) { const v = SV.cq[t]; if (!Number.isInteger(v) || !SV.cw.includes(v) || !CAT[v] || CAT[v].t != t) SV.cq[t] = -1 }
+  for (const t of ['b', 'w', 'p', 'k', 's']) { const v = SV.cq[t]; if (!Number.isInteger(v) || !SV.cw.includes(v) || !CAT[v] || CAT[v].t != t) SV.cq[t] = -1 }
 }
-function crCx() { crInit(); return ['b', 'w', 'p', 'k'].map(t => SV.cq[t] + 1).join('.') }
+function crCx() { crInit(); return ['b', 'w', 'p', 'k', 's'].map(t => SV.cq[t] + 1).join('.') }
 const crMemo = {};
 function crGet(cx, t) {
   if (!cx || typeof cx != 'string') return null;
   let a = crMemo[cx]; if (!a) { a = crMemo[cx] = cx.split('.').map(n => n | 0) }
-  const i = a['bwpk'.indexOf(t)] - 1; const it = i >= 0 ? CAT[i] : null; return it && it.t == t ? it : null;
+  const sj = a[4] - 1, sec = sj >= 0 ? CAT[sj] : null; // un skin secret équipé remplace perso + arme + pouvoir + kill
+  if (sec && sec.t == 's') return t == 's' ? sec : (sec.v[t] || null);
+  const i = a['bwpks'.indexOf(t)] - 1; const it = i >= 0 ? CAT[i] : null; return it && it.t == t ? it : null;
 }
 function crEquip(i) { crInit(); const it = CAT[i]; if (!it || !SV.cw.includes(i)) return; SV.cq[it.t] = SV.cq[it.t] == i ? -1 : i; save(); pres() }
 const crTopCount = () => (SV.ci[3] | 0) + (SV.ci[4] | 0);
+const crProg = () => { crInit(); const l = CAT.filter(it => it.t != 's'); return [l.filter(it => SV.cw.includes(it.i)).length, l.length] }; // progression de la collection (hors secrets)
+const crAll = () => { const p = crProg(); return p[0] >= p[1] };
 
 // ---------- Tirage ----------
 function crPickW(w) { let s = 0; for (const v of w) s += v; let r = Math.random() * s; for (let i = 0; i < w.length; i++) { if (r < w[i]) return i; r -= w[i] } return 0 }
 function crRoll(ci) {
-  const C = CRC[ci], kx = C.kx || 0, ok = it => it.x == 0 || it.x == kx;
+  const C = CRC[ci], kx = C.kx || 0, ok = it => it.t != 's' && (it.x == 0 || it.x == kx);
+  if (C.secret) { const all = CAT.filter(it => it.t == 's'), fresh = all.filter(it => !SV.cw.includes(it.i)), pl = fresh.length ? fresh : all; return pl[Math.random() * pl.length | 0] } // jamais de doublon tant qu'il reste un skin secret
   const tier = crPickW(C.w); let type;
   if (C.top && Math.random() < .3) type = 'k'; else { const r = Math.random() * 100; type = r < 40 ? 'b' : r < 75 ? 'w' : 'p' }
   let pool = CAT.filter(it => it.t == type && it.r == tier && ok(it));
@@ -67,7 +81,7 @@ function crRoll(ci) {
 }
 function crBuy(ci) {
   crInit(); const C = CRC[ci];
-  if ((SV.ci[ci] | 0) > 0) SV.ci[ci]--; else if (C.top) return; else { if (SV.coins < C.p) { feed.push({ t: 'Pas assez de pièces', l: 3 }); return } SV.coins -= C.p }
+  if ((SV.ci[ci] | 0) > 0) SV.ci[ci]--; else if (C.top) return; else { if (C.secret && !crAll()) { feed.push({ t: '🔒 Obtiens tous les skins pour débloquer la Caisse Secrète', l: 4 }); return } if (SV.coins < C.p) { feed.push({ t: 'Pas assez de pièces', l: 3 }); return } SV.coins -= C.p }
   const it = crRoll(ci), dup = SV.cw.includes(it.i);
   if (dup) SV.coins += CRT[it.r].v; else SV.cw.push(it.i);
   crOp = { ci, it, dup, t0: performance.now(), eq: SV.cq[it.t] == it.i }; save(); pres();
@@ -92,6 +106,7 @@ function crWin(id) {
 const crRnd = s => ((Math.sin(s * 127.1 + 311.7) * 43758.5453) % 1 + 1) % 1;
 function crMix(a, b, k) { const p = s => [1, 3, 5].map(i => parseInt(s.substr(i, 2), 16)); const A = p(a), B = p(b); return 'rgb(' + A.map((v, i) => Math.round(v + (B[i] - v) * k)).join(',') + ')' }
 function crShape(kind, x, y, z, col, a, rot) {
+  kind = { void: 'bubble', sun: 'flame', ice: 'snow', aurora: 'petal', eclipse: 'star' }[kind] || kind;
   g.save(); g.globalAlpha = g.globalAlpha * Math.max(0, Math.min(1, a)); g.translate(x, y); g.rotate(rot || 0); g.fillStyle = col; g.strokeStyle = col;
   if (kind == 'flame') { g.beginPath(); g.moveTo(0, -z); g.lineTo(z * .6, z * .4); g.lineTo(-z * .6, z * .4); g.fill() }
   else if (kind == 'star' || kind == 'spark' || kind == 'crown') { g.beginPath(); for (let i = 0; i < 8; i++) { const rd = i % 2 ? z * .35 : z, an = i * Math.PI / 4; g.lineTo(Math.cos(an) * rd, Math.sin(an) * rd) } g.closePath(); g.fill() }
@@ -99,6 +114,7 @@ function crShape(kind, x, y, z, col, a, rot) {
   else if (kind == 'drip') { g.beginPath(); g.ellipse(0, 0, z * .5, z * .8, 0, 0, 7); g.fill() }
   else if (kind == 'bubble') { g.lineWidth = 1.5; g.beginPath(); g.arc(0, 0, z, 0, 7); g.stroke() }
   else if (kind == 'petal') { g.beginPath(); g.ellipse(0, 0, z, z * .5, 0, 0, 7); g.fill() }
+  else if (kind == 'glitch') { g.fillRect(-z, -z * .3, z * 2, z * .6) }
   else { g.beginPath(); g.arc(0, 0, z, 0, 7); g.fill() }
   g.restore();
 }
@@ -111,8 +127,8 @@ function crParts(kind, th, r, t, n) { // particules thématiques autour du centr
   }
   for (let i = 0; i < n; i++) {
     const ph = (t * .9 + i / n) % 1, a0 = i * 2.399; let x, y, z = r * .3, al = 1 - ph, col = i % 2 ? th[2] : th[1];
-    if (kind == 'flame' || kind == 'smoke' || kind == 'drip' || kind == 'rainbow') { x = -r * (.5 + ph * 1.6); y = Math.sin(a0 * 3) * r * .5 * (1 - ph * .5);
-      if (kind == 'flame') { z = r * .5 * (1 - ph) + 1; col = crMix(th[2], th[1], ph) } else if (kind == 'smoke') { z = r * .3 + ph * r * .6; al = .35 * (1 - ph) } else if (kind == 'rainbow') col = 'hsl(' + ((t * 200 + i * 40) % 360) + ',100%,65%)'; else z = r * .25 }
+    if (kind == 'flame' || kind == 'sun' || kind == 'smoke' || kind == 'drip' || kind == 'rainbow') { x = -r * (.5 + ph * 1.6); y = Math.sin(a0 * 3) * r * .5 * (1 - ph * .5);
+      if (kind == 'flame' || kind == 'sun') { z = r * .5 * (1 - ph) + 1; col = crMix(th[2], th[1], ph) } else if (kind == 'smoke') { z = r * .3 + ph * r * .6; al = .35 * (1 - ph) } else if (kind == 'rainbow') col = 'hsl(' + ((t * 200 + i * 40) % 360) + ',100%,65%)'; else z = r * .25 }
     else if (kind == 'spark' || kind == 'star' || kind == 'crown') { const a = t * 2.5 + a0, d = r * (1.3 + .3 * Math.sin(t * 4 + i)); x = Math.cos(a) * d; y = Math.sin(a) * d; al = .6 + .4 * Math.sin(t * 6 + i); z = r * (kind == 'spark' ? .22 : .35) }
     else { const a = a0 + t * .5, d = r * (1 + ph * 1.3); x = Math.cos(a) * d; y = Math.sin(a) * d; z = r * .25 }
     crShape(kind, x, y, z, col, al, t * 2 + i);
@@ -121,12 +137,16 @@ function crParts(kind, th, r, t, n) { // particules thématiques autour du centr
 function crFill(it, r) {
   const th = CRTH[it.th], t = tt;
   if (it.r == 0) return th[1];
+  if (it.r == 5) { const f = th[3];
+    if (f == 'void' || f == 'eclipse') { const gr = g.createRadialGradient(0, 0, 2, 0, 0, r * 1.1); gr.addColorStop(0, '#05020c'); gr.addColorStop(.7, crMix('#05020c', th[1], .35 + .2 * Math.sin(t * 3))); gr.addColorStop(1, th[1]); return gr }
+    const s = .5 + .5 * Math.sin(t * 2), gr = g.createLinearGradient(-r, -r, r, r); gr.addColorStop(0, crMix(th[1], th[2], s)); gr.addColorStop(.5, th[1]); gr.addColorStop(1, crMix(th[2], th[1], s)); return gr }
   if (it.th == 13) { const gr = g.createLinearGradient(-r, -r, r, r); for (let i = 0; i < 4; i++) gr.addColorStop(i / 3, 'hsl(' + ((t * 120 + i * 80) % 360) + ',95%,62%)'); return gr }
   if (it.r == 1) return crMix(th[1], th[2], .5 + .45 * Math.sin(t * 3));
   const gr = g.createRadialGradient(Math.cos(t * 2) * r * .4, Math.sin(t * 2) * r * .4, 1, 0, 0, r * 1.1);
   gr.addColorStop(0, th[2]); gr.addColorStop(1, th[1]); return gr;
 }
 function crBodyFx(s, it) { // repère du joueur (tourné)
+  if (it.r == 5) { crSecBody(s, it); return }
   const th = CRTH[it.th], r = s.r, t = tt, k = it.r; g.save(); const A = g.globalAlpha; g.strokeStyle = th[2];
   if (k == 0) { g.globalAlpha = A * .7; g.lineWidth = 2; g.beginPath(); g.arc(0, 0, r * .8, 0, 7); g.stroke() }
   else if (k == 1) { g.globalAlpha = A * (.35 + .35 * Math.sin(t * 4)); g.lineWidth = 3; g.beginPath(); g.arc(0, 0, r + 2, 0, 7); g.stroke() }
@@ -136,6 +156,7 @@ function crBodyFx(s, it) { // repère du joueur (tourné)
   g.restore();
 }
 function crUp(s, it) { // décorations droites (couronne, auréole, ailes) pour les objets Mythiques
+  if (it.r == 5) { crSecUp(s, it); return }
   if (it.r < 4) return; const r = s.r, t = tt; g.save();
   if (it.th == 12) crCrown(0, -r - 1 + Math.sin(t * 3) * 1.5, 9, '#ffd24a');
   else {
@@ -145,14 +166,49 @@ function crUp(s, it) { // décorations droites (couronne, auréole, ailes) pour 
   }
   g.restore();
 }
+// ---------- Skins SECRETS : halo, anneaux orbitaux, particules + signature propre à chaque skin ----------
+const crSecC = (it, i) => crMix(CRTH[it.th][1], CRTH[it.th][2], .5 + .5 * Math.sin(tt * 3 + (i || 0)));
+function crSecBody(s, it) { // repère du joueur (tourné)
+  const th = CRTH[it.th], r = s.r, t = tt, f = th[3], c1 = th[1], c2 = th[2]; g.save(); const A = g.globalAlpha;
+  g.globalCompositeOperation = 'lighter'; const hg = g.createRadialGradient(0, 0, r * .4, 0, 0, r * 2.4); hg.addColorStop(0, c1); hg.addColorStop(1, 'rgba(0,0,0,0)');
+  g.globalAlpha = A * (.28 + .12 * Math.sin(t * 4)); g.fillStyle = hg; g.beginPath(); g.arc(0, 0, r * 2.4, 0, 7); g.fill(); g.globalCompositeOperation = 'source-over'; g.globalAlpha = A;
+  g.lineWidth = 2; for (let i = 0; i < 3; i++) { g.strokeStyle = i % 2 ? c2 : c1; g.save(); g.rotate(t * (1.2 + i * .5) * (i % 2 ? -1 : 1) + i * 2.1); g.beginPath(); g.ellipse(0, 0, r * (1.5 + i * .28), r * (.5 + i * .18), 0, 0, 7); g.stroke(); g.restore() }
+  const eyes = () => { g.fillStyle = '#fff'; g.beginPath(); g.arc(r * .35, -r * .35, 2.4, 0, 7); g.arc(r * .35, r * .35, 2.4, 0, 7); g.fill() };
+  if (f == 'void') { // trou noir : horizon des événements + bras spiralés
+    g.fillStyle = 'rgba(6,0,16,.88)'; g.beginPath(); g.arc(0, 0, r * .74, 0, 7); g.fill(); g.strokeStyle = c2; g.lineWidth = 2; g.globalAlpha = A * (.6 + .4 * Math.sin(t * 8)); g.beginPath(); g.arc(0, 0, r * .76, 0, 7); g.stroke(); g.globalAlpha = A; g.strokeStyle = c1;
+    for (let i = 0; i < 3; i++) { g.beginPath(); for (let j = 0; j <= 14; j++) { const a = t * 3 + i * 2.094 + j * .22, d = r * (.9 + j * .12); g.lineTo(Math.cos(a) * d, Math.sin(a) * d) } g.stroke() } eyes()
+  } else if (f == 'sun') { // couronne solaire pulsante
+    for (let i = 0; i < 12; i++) { const a = i * .5236 + t * .8, L = r * (1.55 + .35 * Math.sin(t * 5 + i * 1.7)); g.fillStyle = i % 2 ? c2 : c1; g.globalAlpha = A * .85; g.beginPath(); g.moveTo(Math.cos(a - .13) * r * .95, Math.sin(a - .13) * r * .95); g.lineTo(Math.cos(a) * L, Math.sin(a) * L); g.lineTo(Math.cos(a + .13) * r * .95, Math.sin(a + .13) * r * .95); g.closePath(); g.fill() } g.globalAlpha = A
+  } else if (f == 'ice') { // cristaux de glace en rotation
+    for (let i = 0; i < 6; i++) { g.save(); g.rotate(i * 1.0472 - t * .6); g.fillStyle = c2; g.strokeStyle = c1; g.lineWidth = 1.5; g.beginPath(); g.moveTo(r * 1.1, 0); g.lineTo(r * 1.5, -r * .2); g.lineTo(r * (2 + .15 * Math.sin(t * 4 + i)), 0); g.lineTo(r * 1.5, r * .2); g.closePath(); g.fill(); g.stroke(); g.restore() }
+  } else if (f == 'glitch') { // image dédoublée + tranches qui sautent
+    const sd = Math.floor(t * 14), j = (crRnd(sd) - .5) * 8; g.lineWidth = 2; g.strokeStyle = c1; g.globalAlpha = A * .8; g.beginPath(); g.arc(j, -j * .4, r * 1.02, 0, 7); g.stroke(); g.strokeStyle = c2; g.beginPath(); g.arc(-j, j * .4, r * 1.02, 0, 7); g.stroke();
+    g.globalAlpha = A * .75; for (let i = 0; i < 3; i++) { g.fillStyle = i % 2 ? c1 : c2; g.fillRect(-r + (crRnd(sd + i) - .5) * 10, (crRnd(sd + i + 5) - .5) * r * 1.8, r * 1.6, 2) } g.globalAlpha = A
+  } else if (f == 'aurora') { // rubans d'aurore ondulants
+    g.lineWidth = 3; for (let k = 0; k < 3; k++) { g.strokeStyle = crMix(c1, c2, k / 2); g.globalAlpha = A * .85; g.beginPath(); for (let j = 0; j <= 24; j++) { const a = j / 24 * 6.2832, d = r * (1.3 + .18 * Math.sin(a * 3 + t * 3 + k * 2) + k * .12); g.lineTo(Math.cos(a) * d, Math.sin(a) * d) } g.closePath(); g.stroke() } g.globalAlpha = A
+  } else { // éclipse : disque noir + couronne dorée
+    g.fillStyle = '#05030a'; g.beginPath(); g.arc(0, 0, r * .8, 0, 7); g.fill(); g.strokeStyle = c1; g.lineWidth = 3; g.beginPath(); g.arc(0, 0, r * .86, 0, 7); g.stroke(); g.strokeStyle = c2; g.lineWidth = 1.5; g.globalAlpha = A * .75;
+    for (let i = 0; i < 16; i++) { const a = i * .3927 + t * .5, L = r * (1.15 + .3 * Math.sin(t * 6 + i)); g.beginPath(); g.moveTo(Math.cos(a) * r * .95, Math.sin(a) * r * .95); g.lineTo(Math.cos(a) * L, Math.sin(a) * L); g.stroke() } g.globalAlpha = A; eyes()
+  }
+  crParts(f, th, r, t, 9); g.restore();
+}
+function crSecUp(s, it) { // décorations droites : auréole, ailes de lumière, couronne (soleil / éclipse)
+  const th = CRTH[it.th], r = s.r, t = tt, f = th[3]; g.save(); const A = g.globalAlpha;
+  g.lineWidth = 2.5; g.strokeStyle = crSecC(it, 0); g.beginPath(); g.ellipse(0, -r - 8 + Math.sin(t * 3) * 1.5, r * .7, 3.5, 0, 0, 7); g.stroke();
+  const fl = Math.sin(t * 6) * .3;
+  for (const q of [-1, 1]) for (const [sc, col, al] of [[1, th[2], .45], [.65, th[1], .55]]) { g.globalAlpha = A * al; g.fillStyle = col; g.beginPath(); g.moveTo(q * r * .7, -2); g.quadraticCurveTo(q * r * 2 * sc, -r * (1.3 + fl) * sc, q * r * 2.7 * sc, -r * .1); g.quadraticCurveTo(q * r * 1.9 * sc, -r * .1, q * r * 1.5 * sc, r * .5 * sc); g.closePath(); g.fill() }
+  g.globalAlpha = A; if (f == 'sun' || f == 'eclipse') crCrown(0, -r - 17 + Math.sin(t * 3) * 1.5, 8, th[1]);
+  g.restore();
+}
 function crCrown(x, y, z, col) { g.fillStyle = col; g.beginPath(); g.moveTo(x - z, y + z * .6); g.lineTo(x - z, y - z * .3); g.lineTo(x - z * .5, y + z * .1); g.lineTo(x, y - z * .6); g.lineTo(x + z * .5, y + z * .1); g.lineTo(x + z, y - z * .3); g.lineTo(x + z, y + z * .6); g.closePath(); g.fill(); g.fillStyle = '#fff6c4'; g.fillRect(x - z, y + z * .35, z * 2, z * .25) }
 function crWpnFx(s, it) { // arme : liseré lumineux sur le canon (repère tourné)
   if (s.ml || s.cr) return; const th = CRTH[it.th], r = s.r, L = s.L || 22, t = tt, k = it.r, x1 = r + L; g.save(); g.lineCap = 'round';
-  const c1 = it.th == 13 ? 'hsl(' + ((t * 200) % 360) + ',100%,65%)' : th[1];
+  const c1 = it.th == 13 ? 'hsl(' + ((t * 200) % 360) + ',100%,65%)' : it.r == 5 ? crSecC(it, 0) : th[1];
   g.strokeStyle = c1; g.lineWidth = k ? 4 : 3; g.beginPath(); g.moveTo(r + 4, 0); g.lineTo(x1, 0); g.stroke();
   g.strokeStyle = th[2]; g.lineWidth = 1.4; g.beginPath(); g.moveTo(r + 4, 0); g.lineTo(x1, 0); g.stroke();
   if (k >= 1) { g.fillStyle = th[2]; g.globalAlpha = g.globalAlpha * (.4 + .4 * Math.sin(t * 6)); g.beginPath(); g.arc(x1, 0, 3 + k, 0, 7); g.fill() }
   if (k >= 2) { g.globalAlpha = 1; g.fillStyle = '#fff'; g.beginPath(); g.arc(r + 4 + ((t * 1.5) % 1) * (L - 4), 0, 1.8, 0, 7); g.fill() }
+  if (k >= 5) { g.globalAlpha = 1; g.fillStyle = th[1]; g.beginPath(); g.arc(r + 4 + (((t * 1.5) + .5) % 1) * (L - 4), 0, 2.2, 0, 7); g.fill() }
   if (k >= 3) { g.translate(x1, 0); crParts(th[3], th, r * .5, t, 4) }
   g.restore();
 }
@@ -161,10 +217,11 @@ function crWpnFx(s, it) { // arme : liseré lumineux sur le canon (repère tourn
 function crOwnerItem(own, t) { if (own === myPeer || own === 'me') return crGet(crCx(), t); const o = R[own]; return o ? crGet(o.cx, t) : null }
 function crBulAt(it, x, y, vx, vy) {
   const th = CRTH[it.th], k = it.r, t = tt, l = Math.hypot(vx, vy) || 1, ux = vx / l, uy = vy / l; g.save(); g.lineCap = 'round';
-  const col = it.th == 13 ? 'hsl(' + ((t * 300) % 360) + ',100%,65%)' : th[1];
+  const col = it.th == 13 ? 'hsl(' + ((t * 300) % 360) + ',100%,65%)' : it.r == 5 ? crSecC(it, x * .02) : th[1];
   if (k >= 1) { g.strokeStyle = col; g.globalAlpha = .5; g.lineWidth = 2 + k; g.beginPath(); g.moveTo(x, y); g.lineTo(x - ux * (10 + k * 7), y - uy * (10 + k * 7)); g.stroke(); g.globalAlpha = 1 }
   if (k >= 2) { g.shadowColor = th[1]; g.shadowBlur = 10 }
   g.fillStyle = col; g.beginPath(); g.arc(x, y, 3 + (k >= 3 ? 1.5 : 0), 0, 7); g.fill(); g.shadowBlur = 0; g.fillStyle = th[2]; g.beginPath(); g.arc(x, y, 1.6, 0, 7); g.fill();
+  if (k >= 5) { g.strokeStyle = th[2]; g.lineWidth = 1.5; g.globalAlpha = .8; g.beginPath(); g.arc(x, y, 6 + Math.sin(t * 20) * 1.5, 0, 7); g.stroke(); g.globalAlpha = 1 }
   if (k >= 3) for (let j = 1; j <= 4; j++) { const d = j * 9, wob = Math.sin(t * 20 + j * 2 + x * .05) * 3; crShape(th[3] == 'bolt' ? 'spark' : th[3], x - ux * d - uy * wob, y - uy * d + ux * wob, 3.5 - j * .4, j % 2 ? th[2] : th[1], 1 - j * .2, t * 4 + j) }
   g.restore();
 }
@@ -173,7 +230,7 @@ function crBul(b) { if (b.gr || b.rk || b.lz || b.gd || b.sn) return 0; const it
 // ---------- Effets de pouvoir ----------
 function crPfx(it, x, y, t, dur) {
   const th = CRTH[it.th], u = Math.min(1, t / dur), k = it.r; g.save(); g.translate(x, y);
-  const rc = i => it.th == 13 ? 'hsl(' + ((t * 260 + i * 80) % 360) + ',100%,65%)' : i % 2 ? th[2] : th[1];
+  const rc = i => it.th == 13 ? 'hsl(' + ((t * 260 + i * 80) % 360) + ',100%,65%)' : it.r == 5 ? crSecC(it, i) : i % 2 ? th[2] : th[1];
   const nR = k == 0 ? 1 : k < 3 ? 2 : 3;
   for (let i = 0; i < nR; i++) { const uu = Math.max(0, u - i * .12); g.globalAlpha = (1 - uu) * .9; g.strokeStyle = rc(i); g.lineWidth = (k >= 2 ? 5 : 3) * (1 - uu) + 1; g.beginPath(); g.arc(0, 0, 22 + uu * (60 + k * 12), 0, 7); g.stroke() }
   if (k >= 1) { g.globalAlpha = .4 * (1 - u); g.fillStyle = th[1]; g.beginPath(); g.arc(0, 0, 20 + u * 30, 0, 7); g.fill() }
@@ -183,6 +240,11 @@ function crPfx(it, x, y, t, dur) {
     if (it.th == 12) { const gr = g.createLinearGradient(0, -150, 0, 10); gr.addColorStop(0, 'rgba(255,230,120,0)'); gr.addColorStop(1, 'rgba(255,230,120,.7)'); g.globalAlpha = 1 - u; g.fillStyle = gr; g.fillRect(-18, -150, 36, 160); g.globalAlpha = 1 - u * .5; crCrown(0, -34 - u * 26, 10, '#ffd24a') }
     else for (let i = 0; i < 12; i++) { const a = i * .5236 + t * 2, d = 20 + u * 90; g.globalAlpha = 1 - u; g.strokeStyle = 'hsl(' + ((t * 300 + i * 30) % 360) + ',100%,65%)'; g.lineWidth = 2; g.beginPath(); g.moveTo(Math.cos(a) * d * .4, Math.sin(a) * d * .4); g.lineTo(Math.cos(a) * d, Math.sin(a) * d); g.stroke() }
   }
+  if (k == 5) { // signature secrète : flash lumineux + 16 rayons + pilier de lumière
+    const R0 = 40 + u * 120, gr = g.createRadialGradient(0, 0, 0, 0, 0, R0); gr.addColorStop(0, th[2]); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.globalCompositeOperation = 'lighter'; g.globalAlpha = (1 - u) * .8; g.fillStyle = gr; g.beginPath(); g.arc(0, 0, R0, 0, 7); g.fill(); g.globalCompositeOperation = 'source-over';
+    for (let i = 0; i < 16; i++) { const a = i * .3927 + t * 3, d = 20 + u * (110 + (i % 3) * 25); g.globalAlpha = 1 - u; g.strokeStyle = crSecC(it, i); g.lineWidth = 2.5 * (1 - u) + .5; g.beginPath(); g.moveTo(Math.cos(a) * d * .35, Math.sin(a) * d * .35); g.lineTo(Math.cos(a) * d, Math.sin(a) * d); g.stroke() }
+    const gl = g.createLinearGradient(0, -170, 0, 10); gl.addColorStop(0, 'rgba(255,255,255,0)'); gl.addColorStop(1, th[1]); g.globalAlpha = (1 - u) * .55; g.fillStyle = gl; g.fillRect(-14, -170, 28, 180);
+  }
   g.restore();
 }
 function crPos(own) { if (own === myPeer || own === 'me') return me; return R[own] || null }
@@ -190,7 +252,7 @@ function crPowFx(own, x, y, it) { if (!it) return; PFX.push({ own, it, t: 0, dur
 function crPfxRecv(d, from) { const o = R[from], it = o && crGet(o.cx, 'p'); if (it) crPowFx(from, +d.x || o.x, +d.y || o.y, it) }
 
 // ---------- Animations de kill ----------
-const CRKD = { conf: 1.8, soul: 2.2, bolt: .7, stars: 1.3, pixel: 1, petal: 2.4, crown: 2.1, nova: 1.8 };
+const CRKD = { conf: 1.8, soul: 2.2, bolt: .7, stars: 1.3, pixel: 1, petal: 2.4, crown: 2.1, nova: 1.8, sec: 2.4 };
 function crKfx(k, x, y, t, th) {
   const u = Math.min(1, t / CRKD[k]); g.save(); g.translate(x, y); g.lineCap = 'round';
   if (k == 'conf') { for (let i = 0; i < 36; i++) { const a = crRnd(i) * 6.283, sp = 70 + crRnd(i + 9) * 210; g.save(); g.translate(Math.cos(a) * sp * u, Math.sin(a) * sp * u * .7 + 260 * u * u - 60 * u); g.rotate(t * 9 + i); g.globalAlpha = 1 - u * u; g.fillStyle = 'hsl(' + (i * 37 % 360) + ',90%,60%)'; g.fillRect(-4, -2, 8, 4); g.restore() } }
@@ -225,6 +287,20 @@ function crKfx(k, x, y, t, th) {
     for (let i = 0; i < 4; i++) { const r = u * (140 + i * 40) - i * 10; if (r > 0) { g.globalAlpha = 1 - u; g.strokeStyle = 'hsl(' + ((t * 300 + i * 70) % 360) + ',100%,65%)'; g.lineWidth = 4 * (1 - u) + 1; g.beginPath(); g.arc(0, 0, r, 0, 7); g.stroke() } }
     for (let i = 0; i < 18; i++) { const a = i * .349 + t; g.globalAlpha = 1 - u; g.strokeStyle = 'hsl(' + ((i * 20 + t * 200) % 360) + ',100%,70%)'; g.lineWidth = 2; g.beginPath(); g.moveTo(Math.cos(a) * u * 60, Math.sin(a) * u * 60); g.lineTo(Math.cos(a) * u * 190, Math.sin(a) * u * 190); g.stroke() }
   }
+  else if (k == 'sec') { // kill secret : flash, noyau, ondes de choc, éclats thématiques + signature du skin
+    const c = CRTH[th] && th >= 14 ? CRTH[th] : CRTH[14], f = c[3], e = 1 - (1 - u) * (1 - u);
+    if (u < .18) { g.globalAlpha = .35 * (1 - u / .18); g.fillStyle = c[2]; g.fillRect(-W, -H, W * 2, H * 2) }
+    { const R0 = 30 + e * 90, gr = g.createRadialGradient(0, 0, 0, 0, 0, R0); gr.addColorStop(0, c[2]); gr.addColorStop(.5, c[1]); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.save(); g.globalCompositeOperation = 'lighter'; g.globalAlpha = (1 - u) * .9; g.fillStyle = gr; g.beginPath(); g.arc(0, 0, R0, 0, 7); g.fill(); g.restore() }
+    for (let i = 0; i < 4; i++) { const r = e * (150 + i * 55) - i * 14; if (r > 0) { g.globalAlpha = 1 - u; g.strokeStyle = i % 2 ? c[2] : c[1]; g.lineWidth = 5 * (1 - u) + 1; g.beginPath(); g.arc(0, 0, r, 0, 7); g.stroke() } }
+    for (let i = 0; i < 22; i++) { const a = i * .2856 + crRnd(i) * .3, d = e * (60 + crRnd(i + 4) * 170); crShape(f, Math.cos(a) * d, Math.sin(a) * d - e * 30 * crRnd(i + 8), 7 * (1 - u * .6), i % 2 ? c[2] : c[1], 1 - u, t * 4 + i) }
+    g.globalAlpha = 1;
+    if (f == 'void') { if (u < .35) { g.globalAlpha = .9; g.strokeStyle = c[1]; g.lineWidth = 3; g.beginPath(); g.arc(0, 0, (1 - u / .35) * 140, 0, 7); g.stroke() } g.globalAlpha = Math.min(1, (1 - u) * 1.6); g.fillStyle = 'rgba(5,0,14,.92)'; g.beginPath(); g.arc(0, 0, 34 * Math.sin(Math.min(1, u * 1.3) * Math.PI), 0, 7); g.fill(); g.strokeStyle = c[2]; g.lineWidth = 2; g.stroke() }
+    else if (f == 'sun') { for (let i = 0; i < 9; i++) crShape('flame', (i - 4) * 14, -u * 170 - (i % 3) * 22, 18 * (1 - u * .5), i % 2 ? '#ffe27a' : '#ff5a14', 1 - u, 0) }
+    else if (f == 'ice') { for (let i = 0; i < 8; i++) { const a = i * .785, d = e * 130; g.save(); g.translate(Math.cos(a) * d, Math.sin(a) * d); g.rotate(a + t * 4); g.globalAlpha = 1 - u; g.fillStyle = c[2]; g.beginPath(); g.moveTo(0, -13); g.lineTo(5, 0); g.lineTo(0, 13); g.lineTo(-5, 0); g.closePath(); g.fill(); g.restore() } }
+    else if (f == 'glitch') { for (let i = 0; i < 10; i++) { const sd = Math.floor(t * 25) + i; g.globalAlpha = 1 - u; g.fillStyle = i % 2 ? c[1] : c[2]; g.fillRect((crRnd(sd) - .5) * 240, (crRnd(sd + 3) - .5) * 160, 40 + crRnd(sd + 5) * 80, 3 + crRnd(sd + 7) * 5) } }
+    else if (f == 'aurora') { g.lineCap = 'round'; for (let k2 = 0; k2 < 3; k2++) { g.globalAlpha = 1 - u; g.strokeStyle = crMix(c[1], c[2], k2 / 2); g.lineWidth = 4 * (1 - u) + 1; g.beginPath(); for (let j = 0; j <= 24; j++) g.lineTo(Math.sin(j * .35 + t * 4 + k2 * 2) * (14 + j * 1.8), -j * 7 * (.4 + u)); g.stroke() } }
+    else { g.globalAlpha = 1 - u; g.fillStyle = '#05030a'; g.beginPath(); g.arc(0, 0, 26 * (1 - u * .4), 0, 7); g.fill(); g.strokeStyle = c[1]; g.lineWidth = 3; g.stroke(); for (let i = 0; i < 20; i++) { const a = i * .314 + t; g.strokeStyle = c[2]; g.lineWidth = 2; g.beginPath(); g.moveTo(Math.cos(a) * 30, Math.sin(a) * 30); g.lineTo(Math.cos(a) * (30 + 30 + u * 120), Math.sin(a) * (30 + 30 + u * 120)); g.stroke() } }
+  }
   g.restore();
 }
 function crKillAt(by, x, y) {
@@ -249,19 +325,20 @@ function crPrev(it, x, y, sc) {
   if (it.t == 'b') { gun(); body(crFill(it, S.r)); crBodyFx(S, it); crUp(S, it) }
   else if (it.t == 'w') { gun(); body('#5a6478'); crWpnFx(S, it); const o = (t * 120) % 80; crBulAt(it, S.r + S.L + 6 + o, 0, 600, 0); crBulAt(it, S.r + S.L + 6 + (o + 40) % 80, 0, 600, 0) }
   else if (it.t == 'p') { gun(); body('#5a6478'); const d = .9 + .15 * it.r, tm = t % (d + .5); if (tm < d) { g.scale(.6, .6); crPfx(it, 0, 0, tm, d) } }
+  else if (it.t == 's') { const V = it.v; gun(); body(crFill(V.b, S.r)); crWpnFx(S, V.w); crBodyFx(S, V.b); crUp(S, V.b); const o = (t * 120) % 80; crBulAt(V.w, S.r + S.L + 6 + o, 0, 600, 0); crBulAt(V.w, S.r + S.L + 6 + (o + 40) % 80, 0, 600, 0); const d = 1.65, tm = t % (d + .7); if (tm < d) { g.scale(.6, .6); crPfx(V.p, 0, 0, tm, d) } }
   else { g.fillStyle = 'rgba(255,255,255,.12)'; g.beginPath(); g.arc(0, 0, 15, 0, 7); g.fill(); const d = CRKD[it.k], tm = t % (d + .6); if (tm < d) { g.scale(.45, .45); crKfx(it.k, 0, 0, tm, it.th) } }
   g.restore();
 }
 
 // ---------- Interface ----------
 const crTabR = i => ({ x: 150 + i * 240, y: 12, w: 232, h: 36 });
-const crCardR = i => ({ x: 24 + i * 186, y: 64, w: 176, h: 404 });
+const crCardR = i => ({ x: 12 + i * 156, y: 64, w: 150, h: 404 });
 const crBuyR = i => { const c = crCardR(i); return { x: c.x + 10, y: c.y + c.h - 52, w: c.w - 20, h: 42 } };
-const crSlotR = i => ({ x: 24 + i * 156, y: 58, w: 150, h: 34 });
+const crSlotR = i => ({ x: 24 + i * 136, y: 58, w: 130, h: 34 });
 const crCellR = k => ({ x: 300 + (k % 4) * 160, y: 100 + Math.floor(k / 4) * 78, w: 154, h: 72 });
 const crOkR = { x: 500, y: 450, w: 170, h: 48 }, crEqR = { x: 290, y: 450, w: 170, h: 48 };
-const crList = () => CAT.filter(it => it.t == 'bwpk'[crTab]);
-function crBtn(p, txt, col, on) { const h = inB(p, M.x, M.y) && on !== false; g.fillStyle = on === false ? '#171c27' : h ? '#2b3a58' : '#1d2740'; g.fillRect(p.x, p.y, p.w, p.h); g.strokeStyle = on === false ? '#444c5e' : h ? '#fff' : col; g.lineWidth = 2; g.strokeRect(p.x, p.y, p.w, p.h); g.fillStyle = on === false ? '#7b8499' : '#f0e6d0'; g.textAlign = 'center'; g.font = 'bold 15px' + F2; g.fillText(txt, p.x + p.w / 2, p.y + p.h / 2 + 5) }
+const crList = () => CAT.filter(it => it.t == 'bwpks'[crTab]);
+function crBtn(p, txt, col, on) { const h = inB(p, M.x, M.y) && on !== false; g.fillStyle = on === false ? '#171c27' : h ? '#2b3a58' : '#1d2740'; g.fillRect(p.x, p.y, p.w, p.h); g.strokeStyle = on === false ? '#444c5e' : h ? '#fff' : col; g.lineWidth = 2; g.strokeRect(p.x, p.y, p.w, p.h); g.fillStyle = on === false ? '#7b8499' : '#f0e6d0'; g.textAlign = 'center'; g.font = 'bold ' + (txt.length > 19 ? 11 : txt.length > 13 ? 12 : 15) + 'px' + F2; g.fillText(txt, p.x + p.w / 2, p.y + p.h / 2 + 5) }
 function crChest(x, y, sc, c1, c2, open, glow) {
   g.save(); g.translate(x, y); g.scale(sc, sc);
   if (glow > 0) { g.globalCompositeOperation = 'lighter'; g.globalAlpha = Math.min(1, glow); const gr = g.createRadialGradient(0, 0, 8, 0, 0, 100); gr.addColorStop(0, c2); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gr; g.beginPath(); g.arc(0, 0, 100, 0, 7); g.fill(); g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1 }
@@ -276,27 +353,38 @@ function crChest(x, y, sc, c1, c2, open, glow) {
 function crRays(x, y, col, n, t, len) { g.save(); g.translate(x, y); g.rotate(t * .4); g.globalAlpha = .22; g.fillStyle = col; for (let i = 0; i < n; i++) { g.rotate(6.283 / n); g.beginPath(); g.moveTo(0, 0); g.lineTo(len, -len * .07); g.lineTo(len, len * .07); g.fill() } g.restore() }
 function crShop() {
   g.textAlign = 'center'; g.fillStyle = '#ffd98a'; g.font = 'bold 15px' + F2;
+  const pr = crProg(), lock = pr[0] < pr[1];
   CRC.forEach((C, i) => {
-    const p = crCardR(i), hv = inB(p, M.x, M.y), top = !!C.top, n = SV.ci[i] | 0, t = tt;
-    g.fillStyle = '#121826'; g.fillRect(p.x, p.y, p.w, p.h); g.strokeStyle = top ? (i == 4 ? 'hsl(' + ((t * 120) % 360) + ',90%,65%)' : '#ffd24a') : C.c1; g.lineWidth = hv ? 4 : 2; g.strokeRect(p.x, p.y, p.w, p.h);
-    crChest(p.x + 88, p.y + 84, 1.15, C.c1, C.c2, 0, .35 + .25 * Math.sin(t * 2 + i) + i * .06);
-    if (i >= 1) for (let j = 0; j < i * 2; j++) { const a = t * (1 + i * .3) + j * 6.283 / (i * 2); crShape('star', p.x + 88 + Math.cos(a) * 62, p.y + 80 + Math.sin(a) * 40, 3 + i * .4, C.c2, .8, t * 3) }
-    g.textAlign = 'center'; g.fillStyle = '#f0e6d0'; g.font = 'bold 17px' + F2; g.fillText(C.n, p.x + 88, p.y + 160);
-    g.font = '12px' + F2; g.fillStyle = '#9aa7bd'; g.fillText(C.d, p.x + 88, p.y + 180);
+    const p = crCardR(i), hv = inB(p, M.x, M.y), top = !!C.top, sec = !!C.secret, n = SV.ci[i] | 0, t = tt, cx = p.x + p.w / 2;
+    g.fillStyle = sec ? '#0e0a1a' : '#121826'; g.fillRect(p.x, p.y, p.w, p.h); g.strokeStyle = sec ? 'hsl(' + ((t * 160) % 360) + ',90%,62%)' : top ? (i == 4 ? 'hsl(' + ((t * 120) % 360) + ',90%,65%)' : '#ffd24a') : C.c1; g.lineWidth = hv ? 4 : 2; g.strokeRect(p.x, p.y, p.w, p.h);
+    crChest(cx, p.y + 84, 1.15, C.c1, C.c2, 0, .35 + .25 * Math.sin(t * 2 + i) + i * .06);
+    if (i >= 1) for (let j = 0; j < i * 2; j++) { const a = t * (1 + i * .3) + j * 6.283 / (i * 2); crShape('star', cx + Math.cos(a) * 62, p.y + 80 + Math.sin(a) * 40, 3 + i * .4, C.c2, .8, t * 3) }
+    if (sec && lock) { g.fillStyle = 'rgba(5,7,11,.5)'; g.fillRect(p.x + 1, p.y + 1, p.w - 2, 150); g.textAlign = 'center'; g.font = '34px' + F2; g.fillStyle = '#fff'; g.fillText('🔒', cx, p.y + 98) }
+    g.textAlign = 'center'; g.fillStyle = '#f0e6d0'; g.font = 'bold 16px' + F2; g.fillText(C.n, cx, p.y + 160);
+    g.font = '11px' + F2; g.fillStyle = '#9aa7bd'; g.fillText(C.d, cx, p.y + 180);
     let y = p.y + 204; g.textAlign = 'left'; g.font = '12px' + F2;
-    C.w.forEach((w, r) => { if (!w) return; g.fillStyle = CRT[r].c; g.fillText(CRT[r].n, p.x + 14, y); g.textAlign = 'right'; g.fillText(w + ' %', p.x + p.w - 14, y); g.textAlign = 'left'; y += 18 });
-    g.fillStyle = '#9aa7bd'; g.font = '11px' + F2; if (top) { g.fillText('Skins exclusifs + animations', p.x + 14, y + 6); g.fillText('de kill (kill = animation)', p.x + 14, y + 20) } else g.fillText('Perso · Arme · Pouvoir', p.x + 14, y + 6);
-    if (n > 0) crBtn(crBuyR(i), 'Ouvrir (x' + n + ')', '#ffd24a'); else if (top) crBtn(crBuyR(i), '🔒 ' + C.d, '#ffd24a', false); else crBtn(crBuyR(i), C.p + ' pièces — acheter', '#7ad0ff', SV.coins >= C.p);
+    C.w.forEach((w, r) => { if (!w) return; g.fillStyle = CRT[r].c; g.fillText(CRT[r].n, p.x + 12, y); g.textAlign = 'right'; g.fillText(w + ' %', p.x + p.w - 12, y); g.textAlign = 'left'; y += 18 });
+    g.fillStyle = '#9aa7bd'; g.font = '11px' + F2;
+    if (sec) {
+      g.textAlign = 'center'; g.fillStyle = lock ? '#ff9ab0' : '#7dff9a'; g.font = 'bold 12px' + F2; g.fillText(lock ? 'Collection ' + pr[0] + ' / ' + pr[1] : '✔ Débloquée !', cx, y);
+      g.fillStyle = '#232a3a'; g.fillRect(p.x + 14, y + 8, p.w - 28, 8); g.fillStyle = lock ? '#ff3d8b' : '#3fcf5a'; g.fillRect(p.x + 14, y + 8, (p.w - 28) * pr[0] / pr[1], 8);
+      g.fillStyle = '#9aa7bd'; g.font = '11px' + F2; g.fillText('Set complet animé :', cx, y + 38); g.fillText('perso + arme + pouvoir', cx, y + 53); g.fillText('+ animation de kill', cx, y + 68); g.fillText(lock ? 'Obtiens tous les skins' : 'Aucun doublon garanti', cx, y + 88); if (lock) g.fillText('pour la débloquer', cx, y + 102);
+    } else if (top) { g.fillText('Skins exclusifs', p.x + 12, y + 6); g.fillText('+ animations de kill', p.x + 12, y + 20) } else g.fillText('Perso · Arme · Pouvoir', p.x + 12, y + 6);
+    if (n > 0) crBtn(crBuyR(i), 'Ouvrir (x' + n + ')', '#ffd24a');
+    else if (sec) crBtn(crBuyR(i), lock ? '🔒 Collection ' + pr[0] + '/' + pr[1] : 'Acheter — ' + C.p + ' ●', '#ff3d8b', !lock && SV.coins >= C.p);
+    else if (top) crBtn(crBuyR(i), '🔒 ' + C.d, '#ffd24a', false);
+    else crBtn(crBuyR(i), 'Acheter — ' + C.p + ' ●', '#7ad0ff', SV.coins >= C.p);
   });
   g.textAlign = 'center'; g.fillStyle = '#9aa7bd'; g.font = '13px' + F2;
   g.fillText('Fais Top 1 (3 kills minimum) en Classique → Caisse Champion · Top 1 en Classé → Caisse Radiant. Doublon = pièces rendues.', W / 2, 496);
-  g.fillText('Équipe tes objets dans l\'onglet Personnalisation.  Objets possédés : ' + SV.cw.length + ' / ' + CAT.length, W / 2, 518);
+  g.fillText('Équipe tes objets dans l\'onglet Personnalisation.  Objets possédés : ' + SV.cw.length + ' / ' + CAT.length + '  ·  Caisse Secrète : obtiens tous les skins pour la débloquer.', W / 2, 518);
 }
 // Onglet Personnalisation : un mannequin à gauche (montre les objets équipés) + liste compacte des objets à droite (sans images de personnages)
 const crPanR = { x: 24, y: 100, w: 262, h: 392 };
 function crDummy() {
   const P = crPanR, t = tt, S = { r: 17, L: 22 }, sc = 2.3, cx = P.x + 114, cy = P.y + 124 + Math.sin(t * 2) * 2.5;
-  const cb = SV.cq.b >= 0 ? CAT[SV.cq.b] : null, cw = SV.cq.w >= 0 ? CAT[SV.cq.w] : null, cp = SV.cq.p >= 0 ? CAT[SV.cq.p] : null, ck = SV.cq.k >= 0 ? CAT[SV.cq.k] : null;
+  let cb = SV.cq.b >= 0 ? CAT[SV.cq.b] : null, cw = SV.cq.w >= 0 ? CAT[SV.cq.w] : null, cp = SV.cq.p >= 0 ? CAT[SV.cq.p] : null, ck = SV.cq.k >= 0 ? CAT[SV.cq.k] : null;
+  const cs = SV.cq.s >= 0 ? CAT[SV.cq.s] : null; if (cs) { cb = cs.v.b; cw = cs.v.w; cp = cs.v.p; ck = cs.v.k }
   const sk = SKINS[SV.skin] || SKINS[0];
   g.save(); g.fillStyle = '#0e1320'; g.fillRect(P.x, P.y, P.w, P.h);
   const bg = g.createRadialGradient(cx, cy, 10, cx, cy, 210); bg.addColorStop(0, 'rgba(100,120,190,.30)'); bg.addColorStop(1, 'rgba(100,120,190,0)'); g.fillStyle = bg; g.fillRect(P.x, P.y, P.w, P.h);
@@ -326,9 +414,9 @@ function crDummy() {
   g.restore();
 }
 function crPerso() {
-  g.textAlign = 'center'; ['b', 'w', 'p', 'k'].forEach((t, i) => { const p = crSlotR(i), on = crTab == i, n = SV.cw.filter(j => CAT[j].t == t).length, tot = CAT.filter(it => it.t == t).length;
-    g.fillStyle = on ? '#2b3a58' : '#161d2a'; g.fillRect(p.x, p.y, p.w, p.h); g.strokeStyle = on ? '#fff' : inB(p, M.x, M.y) ? '#9ab' : '#556'; g.lineWidth = 2; g.strokeRect(p.x, p.y, p.w, p.h); g.fillStyle = '#f0e6d0'; g.font = 'bold 14px' + F2; g.fillText(CRTY[t] + '  ' + n + '/' + tot, p.x + p.w / 2, p.y + 22) });
-  const cur = SV.cq['bwpk'[crTab]]; g.textAlign = 'right'; g.fillStyle = '#9aa7bd'; g.font = '13px' + F2; g.fillText('Équipé : ' + (cur >= 0 ? CAT[cur].n : 'rien'), W - 24, 80);
+  g.textAlign = 'center'; ['b', 'w', 'p', 'k', 's'].forEach((t, i) => { const p = crSlotR(i), on = crTab == i, n = SV.cw.filter(j => CAT[j].t == t).length, tot = CAT.filter(it => it.t == t).length;
+    g.fillStyle = on ? '#2b3a58' : '#161d2a'; g.fillRect(p.x, p.y, p.w, p.h); g.strokeStyle = on ? '#fff' : inB(p, M.x, M.y) ? '#9ab' : '#556'; g.lineWidth = 2; g.strokeRect(p.x, p.y, p.w, p.h); g.fillStyle = '#f0e6d0'; g.font = 'bold 14px' + F2; g.fillText(t == 's' && !n && !crAll() ? '🔒 Secret' : CRTY[t] + '  ' + n + '/' + tot, p.x + p.w / 2, p.y + 22) });
+  const cur = SV.cq['bwpks'[crTab]]; g.textAlign = 'right'; g.fillStyle = '#9aa7bd'; g.font = '13px' + F2; g.fillText('Équipé : ' + (cur >= 0 ? CAT[cur].n : 'rien'), W - 24, 80);
   crDummy();
   crList().forEach((it, k) => {
     const p = crCellR(k), own = SV.cw.includes(it.i), eq = SV.cq[it.t] == it.i, hv = inB(p, M.x, M.y) && own, rc = CRT[it.r].c, th = CRTH[it.th];
@@ -342,6 +430,9 @@ function crPerso() {
     if (l2) { g.font = '11px' + F2; g.fillStyle = own ? '#c5cfe0' : '#566077'; g.fillText(l2, p.x + 56, p.y + 38) }
     g.font = 'bold 10px' + F2; g.fillStyle = eq ? '#3fcf5a' : own ? '#9aa7bd' : rc; g.fillText(eq ? '✔ Équipé' : own ? 'Équiper' : CRT[it.r].n + (it.x ? ' · Top 1' : ''), p.x + 56, p.y + 62);
   });
+  if (crTab == 4) { const pr = crProg(); g.textAlign = 'center'; g.fillStyle = pr[0] < pr[1] ? '#ff9ab0' : '#7dff9a'; g.font = 'bold 14px' + F2;
+    g.fillText(pr[0] < pr[1] ? '🔒 Obtiens tous les skins (' + pr[0] + ' / ' + pr[1] + ') pour débloquer la Caisse Secrète' : '✔ Caisse Secrète débloquée — 1000 ● dans la boutique', 300 + 320, 300);
+    g.font = '12px' + F2; g.fillStyle = '#9aa7bd'; g.fillText('Un skin secret remplace ton perso, ton arme, ton pouvoir et ton animation de kill.', 300 + 320, 322) }
   g.textAlign = 'center'; g.fillStyle = '#7b8499'; g.font = '12px' + F2; g.fillText('Clique un objet possédé pour l\'équiper — reclique pour le retirer.', 300 + 320, 512);
 }
 function crOpen() {
@@ -355,7 +446,7 @@ function crOpen() {
   }
   const k = Math.min(1, (t - 2) / .35), e = 1 - Math.pow(1 - k, 3);
   crRays(W / 2, 220, rc, 10 + it.r * 3, t, 520); g.textAlign = 'center'; g.fillStyle = rc; g.font = 'bold 22px' + F2; g.fillText(CRT[it.r].n.toUpperCase() + ' — ' + CRTL[it.t], W / 2, 70);
-  g.save(); g.beginPath(); g.rect(W / 2 - 230, 90, 460, 250); g.clip(); crPrev(it, W / 2, 215, (it.t == 'b' || it.t == 'w' ? 3.2 : 1.7) * e); g.restore();
+  g.save(); g.beginPath(); g.rect(W / 2 - 230, 90, 460, 250); g.clip(); crPrev(it, W / 2, 215, (it.t == 'b' || it.t == 'w' || it.t == 's' ? 3.2 : 1.7) * e); g.restore();
   g.fillStyle = '#f0e6d0'; g.font = 'bold 34px' + F2; g.fillText(it.n, W / 2, 380);
   g.font = 'bold 18px' + F2; if (o.dup) { g.fillStyle = '#e9d9a8'; g.fillText('Doublon : +' + CRT[it.r].v + ' pièces', W / 2, 412) } else { g.fillStyle = '#7dff9a'; g.fillText('NOUVEAU !', W / 2, 412) }
   if (SV.cq[it.t] != it.i) crBtn(crEqR, 'Équiper', '#3fcf5a'); crBtn(crOkR, 'OK', '#7ad0ff');
@@ -373,7 +464,7 @@ function crClick() {
     if (inB(crEqR, M.x, M.y) && SV.cq[crOp.it.t] != crOp.it.i) crEquip(crOp.it.i); crOp = null; return }
   for (let i = 0; i < 2; i++) if (inB(crTabR(i), M.x, M.y)) { crS = i + 1; return }
   if (crS == 1) { for (let i = 0; i < CRC.length; i++) if (inB(crBuyR(i), M.x, M.y)) crBuy(i) }
-  else { for (let i = 0; i < 4; i++) if (inB(crSlotR(i), M.x, M.y)) crTab = i; crList().forEach((it, k) => { if (inB(crCellR(k), M.x, M.y) && SV.cw.includes(it.i)) crEquip(it.i) }) }
+  else { for (let i = 0; i < 5; i++) if (inB(crSlotR(i), M.x, M.y)) crTab = i; crList().forEach((it, k) => { if (inB(crCellR(k), M.x, M.y) && SV.cw.includes(it.i)) crEquip(it.i) }) }
 }
 function crOpenScr(n) { bp = shop = st = 0; psk = 1; crS = n; crOp = null }
 function crMenuClick() { return 0 } // plus de boutons sur le menu des modes : les caisses s'ouvrent depuis l'écran de choix (cases) ou avec C / V

@@ -396,7 +396,7 @@ function phMark(px,py){g.save();g.translate(px-cam.x,py-cam.y);g.strokeStyle='#f
 let admP=0,admPT=0,admToast=null;
 // admP : 1 skin · 2 perso · 3 skin de caisse · 4 caisse (donner) ; 11 · 12 · 13 · 14 (retirer) ; 15 = retirer un skin de perso (pack)
 const admRem=()=>admP>10,admK=()=>admP%10;
-const ADMT=['Skin de perso','Skin d\'arme','Effet de pouvoir','Anim. de kill'],ADMTK='bwpk';
+const ADMT=['Skin de perso','Skin d\'arme','Effet de pouvoir','Anim. de kill','Skin secret'],ADMTK='bwpks';
 const ADMTT={1:'un skin',2:'un personnage',3:'un skin de caisse',4:'une caisse',5:'un skin de perso'};
 const ADMACT={1:['givesk','remsk'],2:['givech','remch'],3:['givecw','remcw'],4:['givecr','remcr'],5:['givesk','remsk']};
 const admItems=()=>{const k=admK(),rem=admRem();
@@ -414,7 +414,7 @@ admItems().forEach(([n,v,c],q)=>{const r=admPk(q),h=inB(r,M.x,M.y);g.fillStyle=h
 if(admToast&&performance.now()<admToast.u){g.fillStyle='rgba(8,6,16,.92)';g.fillRect(W/2-230,H-70,460,28);g.strokeStyle=admToast.c;g.lineWidth=2;g.strokeRect(W/2-230,H-70,460,28);g.fillStyle='#fff';g.font='bold 14px'+F2;g.fillText(admToast.t,W/2,H-51)}
 g.fillStyle='#9aa7bd';g.font='13px'+F2;g.fillText('Clique pour '+(rem?'retirer':'donner')+' (le choix reste ouvert) — Échap pour revenir',W/2,H-20)}
 function admPickClick(){const k=admK(),rem=admRem();
-if(k==3)for(let i=0;i<4;i++)if(inB(admTabR(i),M.x,M.y)){admPT=i;return}
+if(k==3)for(let i=0;i<5;i++)if(inB(admTabR(i),M.x,M.y)){admPT=i;return}
 admItems().forEach(([n,v],q)=>{if(inB(admPk(q),M.x,M.y)){admSend(ADMACT[k][rem?1:0],v);admToast={t:(rem?'− retiré : ':'+ donné : ')+n,c:rem?'#ff7a7a':'#7be3a5',u:performance.now()+1800}}})}
 const PRICE={1:25,2:25,3:25,4:25,7:25,8:25,9:25,11:25,12:25,13:25,14:40},PASSCH={0:10,5:16,6:22,10:30},ST={1:5,2:12,3:18,4:24,5:28},TIERS=30;
 const SKINS=[{n:'Classique',c:null},{n:'Néon',c:'#39ff88'},{n:'Or',c:'#ffd24a'},{n:'Givre',c:'#9fe6ff'},{n:'Lave',c:'#ff5a2a'},{n:'Royal',c:'#c36bff'},
