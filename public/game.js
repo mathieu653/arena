@@ -21,7 +21,7 @@ const CH=[
 {n:'Crocodile',hp:140,sp:235,col:'#1d5a2b',cd:.5,dmg:38,bs:0,spr:0,pel:0,life:0,r:16,L:30,acd:18,ab:'swim',ml:1,mr:78,ma:1.1,sec:2,hid:1,cr:1},
 {n:'Tong Tong Sahur',hp:130,sp:225,col:'#b9824a',cd:.6,dmg:32,bs:0,spr:0,pel:0,life:0,r:15,L:46,acd:9,ab:'behind',ml:1,mr:84,ma:.95,sec:1},
 {n:'Nécro-Sire',hp:125,sp:225,col:'#4be39a',cd:.3,dmg:13,bs:760,spr:.05,pel:1,life:.8,r:15,L:22,acd:14,ab:'nsum',sec:1},
-{n:'Éclipse',hp:150,sp:255,col:'#b46bff',cd:.17,dmg:8,bs:850,spr:.06,pel:2,life:.9,r:16,L:26,acd:20,ab:'eclipse',sec:1,hid:1},
+{n:'Éclipse',hp:150,sp:255,col:'#b46bff',cd:.17,dmg:8,bs:850,spr:.06,pel:3,life:.9,r:16,L:26,acd:20,ab:'eclipse',sec:1,hid:1},
 {n:'Pyrax',hp:230,sp:255,col:'#ff6a1a',cd:.2,dmg:30,bs:760,spr:.08,pel:2,life:1,r:17,L:26,acd:22,ab:'dfire',sec:1,hid:1,dg:1}];
 // ---- Nécro-Sire : invocation (Assassin / Tank / Archer / Mage) + série de kills en 3 stades ----
 const NSK=2; // kills (sans mourir) nécessaires pour monter d'un stade : 2 / 4 / 6
