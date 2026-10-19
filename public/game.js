@@ -179,7 +179,7 @@ const sc=[['Toi',me.k,SV.rk.r],...Object.keys(R).map(k=>[tag(k),R[k].k,R[k].rk])
 if(POS)drawPos();if(me.al){const s=CH[me.c];if(s.ab=='nsum')drawNecBar();g.fillStyle='#000a';g.fillRect(14,H-44,220,12);g.fillStyle='#6fd16f';g.fillRect(14,H-44,220*Math.max(0,me.hp/s.hp),12);if(me.bn>0){g.fillStyle='#b070ff';g.fillRect(14+220*Math.min(1,Math.max(0,me.hp)/s.hp),H-44,220*me.bn/s.hp,12)}g.fillStyle='#000a';g.fillRect(14,H-26,220,8);g.fillStyle=me.sn?'#ffd23a':me.ab<=0?'#7ad0ff':'#456';g.fillRect(14,H-26,220*(me.ab<=0||me.sn?1:Math.max(0,1-me.ab/s.acd)),8);g.fillStyle='#e6ecf5';g.fillText(s.n+(me.sn?' — 🎯 SNIPER ÉQUIPÉ : une seule balle':me.ab<=0?(svCan(1)?' — capacité prête (Maj / Espace / clic droit)':' — 🔒 pouvoir verrouillé : casse des caisses'):'')+(me.lz>0?'   ⚡ LASER '+Math.ceil(me.lz)+' s':'')+(me.hs>0?'   » VITESSE '+Math.ceil(me.hs)+' s':'')+(me.db>0?'   ✦ DÉGÂTS x2 '+Math.ceil(me.db)+' s':''),14,H-52)}
 if(mode!=1){drawSelScreen()}}
 function nr(){return Object.keys(R).length}
-const PL=300,SC=10,VT=15,CY=PL+SC+VT;
+const PL=180,SC=10,VT=15,CY=PL+SC+VT;
 const fmt=t=>Math.floor(t/60)+':'+String(Math.floor(t%60)).padStart(2,'0');
 function phase(){if(SV.mode>=2)return{n:0,left:PL,id:0};const t=net.now()/1000,e=t%CY,id=Math.floor(t/CY);return e<PL?{n:0,left:PL-e,id}:e<PL+SC?{n:1,left:PL+SC-e,id}:{n:2,left:CY-e,id}}
 function tally(){const a=[0,0,0];if(me.v!=null)a[me.v]++;for(const k in R){const v=R[k].v;if(v!=null&&v>=0&&v<3)a[v]++}return a}

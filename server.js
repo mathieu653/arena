@@ -62,7 +62,7 @@ function accReply(me, k, a, created, tk) {
 const accNo = (me, e, bad) => me.ws.send(JSON.stringify({ t: 'acc_no', d: { e, bad: bad ? 1 : 0 } }));
 
 // Horloge de partie partagée : le temps peut être avancé quand tous les joueurs sont prêts
-const PL = 300, SC = 10, VT = 15, CY = PL + SC + VT; // jeu, scores, vote (secondes)
+const PL = 180, SC = 10, VT = 15, CY = PL + SC + VT; // jeu, scores, vote (secondes)
 let skip = 0;
 const sNow = () => Date.now() + skip;
 
