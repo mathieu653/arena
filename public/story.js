@@ -1,6 +1,7 @@
-// story.js — Mode HISTOIRE (solo) : campagne en 5 chapitres, un boss par chapitre.
+// story.js — Mode HISTOIRE (solo) : campagne en 6 chapitres, un boss par chapitre.
 // Chargé après survivor.js : réutilise ses ennemis (SVEN, svEnemyUpd, svDrawEnemy…) et les variables de game.js.
 //
+// 6 chapitres. Récompenses : Magmaar (ch.5), Éclipse — perso surpuissant — (ch.6, boss final).
 // Déroulé d'un chapitre : dialogue d'intro → 3 vagues d'ennemis → boss → dialogue de fin → récompenses → chapitre suivant.
 // La progression (SV.story = chapitres terminés) est sauvegardée. Mort = on recommence le chapitre.
 // Fin de l'histoire : déblocage de Magmaar (ou pièces si tu l'as déjà).
@@ -33,8 +34,14 @@ const STCH = [
     intro: [['Narrateur', 'Voici la fin du voyage. Sur le trône se dresse une silhouette immense, une batte à la main.'], ['Roi d\'Ombre', '« Tong Tong Sahur… voilà le nom que les vivants murmurent avant de mourir. »'], ['Narrateur', 'Tout se joue maintenant.']],
     waves: [[[0, 10], [2, 6]], [[3, 4], [1, 10]], [[3, 5], [2, 8], [1, 8]]],
     boss: { n: 'Tong Tong Sahur', hp: 2600, r: 34, sp: 85, dm: 40, col: '#b9824a', gc: '#c060ff', ab: ['charge', 'summon', 'nova'], final: 1 },
-    outro: [['Narrateur', 'Le Roi d\'Ombre tombe. Le Sceau se reforme et les cendres redeviennent terre.'], ['Narrateur', 'Magmaar, seigneur des flammes, reconnaît ta force et rejoint ta cause.'], ['Narrateur', 'FIN — merci d\'avoir joué l\'histoire !']] }];
-const STMAG = 15; // indice de Magmaar dans CH (récompense de fin)
+    reward: { ch: 15, n: 'Magmaar' },
+    outro: [['Narrateur', 'Le Roi d\'Ombre s\'écroule… mais son ombre ne se dissipe pas.'], ['Roi d\'Ombre', '« Fou… Je n\'étais qu\'une serrure. Ce que tu as libéré dort derrière le Sceau. »'], ['Narrateur', 'Magmaar, seigneur des flammes, reconnaît ta force et rejoint ta cause.'], ['Narrateur', 'Le sol se fend. Un Néant s\'ouvre devant toi.']] },
+  { n: 'Le Néant', map: { fl: '#08080f', gr: '#12121f', wa: '#2a2050', wt: '#6a5ac0', dc: ['#3a2a7a', '#1a1a3a'], seed: 66 },
+    intro: [['Narrateur', 'Il n\'y a plus ni ciel ni sol, seulement le vide et des murs de nuit.'], ['Éclipse', '« Je suis ce qui reste quand la lumière meurt. Le Roi n\'était que mon geôlier. »'], ['Narrateur', 'Éclipse t\'attend. Aucune retraite possible.']],
+    waves: [[[3, 5], [2, 8], [1, 8]], [[3, 6], [1, 12], [2, 6]], [[3, 8], [2, 10], [1, 10]]],
+    boss: { n: 'Éclipse', hp: 4200, r: 36, sp: 95, dm: 44, col: '#2a1450', gc: '#ffffff', ab: ['charge', 'summon', 'nova', 'blink'], final: 1 },
+    reward: { ch: 19, n: 'Éclipse' },
+    outro: [['Narrateur', 'Éclipse se fissure et la lumière revient, d\'un seul coup.'], ['Éclipse', '« Tu m\'as vaincu… alors prends ma puissance. Elle est à toi. »'], ['Narrateur', 'FIN — merci d\'avoir joué l\'histoire ! Éclipse rejoint tes personnages.']] }];
 
 // ---------- Cartes (une par chapitre) ----------
 const STI = STCH.map((c) => {
@@ -60,13 +67,13 @@ const STI = STCH.map((c) => {
 const STR = { ph: 'idle', ch: 1, wv: 0, q: [], sp: 0, wt: 0, dlg: null, di: 0, then: null, sx: 0, sy: 0, retry: 0, boss: null, md: 0, kn: 0, ban: null };
 const stChap = () => STCH[STR.ch - 1];
 function stInfo() {
-  const n = STR.ph == 'idle' ? ((SV.story | 0) >= 5 ? 1 : (SV.story | 0) + 1) : STR.ch;
+  const n = STR.ph == 'idle' ? ((SV.story | 0) >= STCH.length ? 1 : (SV.story | 0) + 1) : STR.ch;
   return 'Chapitre ' + n + ' : ' + STCH[n - 1].n;
 }
 function stDialog(lines, then) { STR.dlg = lines; STR.di = 0; STR.then = then; STR.sx = me.x; STR.sy = me.y; STR.md = M.d ? 1 : 0; }
 
 function stStart() {
-  if (STR.ph != 'dead') STR.ch = (SV.story | 0) >= 5 ? 1 : (SV.story | 0) + 1; // sinon : on rejoue le chapitre perdu
+  if (STR.ph != 'dead') STR.ch = (SV.story | 0) >= STCH.length ? 1 : (SV.story | 0) + 1; // sinon : on rejoue le chapitre perdu
   stLoad(STR.retry);
 }
 function stLoad(skipIntro) {
@@ -90,7 +97,7 @@ function stOver() {
 function stMake(T, x, y, hs, ds, boss) {
   const hp = T.hp * hs;
   const o = { sv: 1, x, y, hp, mh: hp, a: 0, an: 0, fl: 0, dt: 0, k: 0, d: 0, cd: .6 + Math.random(), r: T.r, sp: T.sp, dm: Math.round(T.dm * ds), rg: T.rg || 0, col: T.col, n: T.n, boss: boss ? 1 : 0, ty: SVEN.indexOf(T) };
-  if (boss) Object.assign(o, { gc: T.gc, ab: T.ab, final: T.final, t1: 4, t2: 6, t3: 5, chg: 0, tel: 0, kind: '' });
+  if (boss) Object.assign(o, { gc: T.gc, ab: T.ab, final: T.final, t1: 4, t2: 6, t3: 5, t4: 3, chg: 0, tel: 0, kind: '' });
   bots.push(o); return o;
 }
 function stSpawn(ti, boss) {
@@ -114,6 +121,7 @@ function stBossUpd(o, dt) { // renvoie 1 si le boss gère lui-même son déplace
     if (o.tel <= 0) {
       if (o.kind == 'charge') { o.chg = .6; o.ca = Math.atan2(dy, dx); o.hit = 0; }
       else if (o.kind == 'nova') { stBullets(o, enr ? 18 : 12, .38); for (let i = 0; i < 24; i++) ptc(o.x, o.y, '#fff'); }
+      else if (o.kind == 'blink') { const a = me.a + Math.PI, nx = me.x + Math.cos(a) * (o.r + 34), ny = me.y + Math.sin(a) * (o.r + 34); for (let i = 0; i < 24; i++) ptc(o.x, o.y, '#fff'); if (svFree(nx, ny, o.r)) { o.x = nx; o.y = ny; } for (let i = 0; i < 24; i++) ptc(o.x, o.y, '#b46bff'); if (me.al && Math.hypot(me.x - o.x, me.y - o.y) < o.r + CH[me.c].r + 50) hurtMe(Math.round(o.dm * 1.1), 'horde'); stBullets(o, 8, .45); }
       else if (o.kind == 'summon') { let n = 0; for (const q of bots) if (q.sv && !q.cr && q.hp > 0 && !q.boss) n++; for (let i = 0; i < 3 && n < 22; i++) { const T = SVEN[0], a = i * 2.1 + Math.random(); stMake(T, o.x + Math.cos(a) * 70, o.y + Math.sin(a) * 70, 1 + .25 * (STR.ch - 1), 1, 0); } for (let i = 0; i < 20; i++) ptc(o.x, o.y, '#9a4ac0'); }
     }
     return 1;
@@ -123,10 +131,11 @@ function stBossUpd(o, dt) { // renvoie 1 si le boss gère lui-même son déplace
     if (me.al && !o.hit && d < o.r + CH[me.c].r + 6) { o.hit = 1; hurtMe(Math.round(o.dm * 1.2), 'horde'); }
     return 1;
   }
-  for (const [i, ab] of o.ab.entries()) { // cooldowns
-    const key = ['t1', 't2', 't3'][['charge', 'summon', 'nova'].indexOf(ab)];
+  const AK = { charge: ['t1', 5], summon: ['t2', 9], nova: ['t3', 7], blink: ['t4', 6] };
+  for (const ab of o.ab) { // recharges des attaques
+    const [key, cdn] = AK[ab];
     o[key] -= dt;
-    if (o[key] <= 0 && !o.tel) { o[key] = [5, 9, 7][['charge', 'summon', 'nova'].indexOf(ab)] * k; o.kind = ab; o.tel = ab == 'charge' ? .7 : .6; break; }
+    if (o[key] <= 0 && !o.tel) { o[key] = cdn * k; o.kind = ab; o.tel = ab == 'charge' ? .7 : .6; break; }
   }
   return 0;
 }
@@ -144,6 +153,7 @@ function stUpd(dt) {
   if (mode != 1 || !me.al || (STR.ph != 'play' && STR.ph != 'boss')) return;
   const en = []; for (const o of bots) if (o.sv && !o.cr && o.hp > 0) en.push(o);
   const T = stChap();
+  if (STR.ph == 'boss' && STR.boss && STR.boss.hp <= 0) { for (const o of en) svHit(o, 1e9); stClear(); return; } // le boss tombe : ses renforts aussi
   if (STR.q.length) { STR.sp -= dt; if (STR.sp <= 0 && en.length < 36) { STR.sp = .4; if (stSpawn(STR.q[STR.q.length - 1])) STR.q.pop(); else STR.q.pop(); } }
   else if (!en.length) {
     if (STR.ph == 'boss') { stClear(); return; }
@@ -168,17 +178,19 @@ function stNext() {
   if (STR.di >= STR.dlg.length) { const f = STR.then; STR.dlg = null; if (f) f(); }
 }
 function stClear() {
-  const ch = STR.ch, last = ch >= 5;
+  const ch = STR.ch, last = ch >= STCH.length;
   SV.story = Math.max(SV.story | 0, ch);
   gain(80 * ch, 40 * ch);
   feed.push({ t: '✔ Chapitre ' + ch + ' terminé · +' + 40 * ch + ' pièces', l: 6 });
   STR.ph = 'outro'; me.hp = CH[me.c].hp;
   stDialog(stChap().outro, () => {
-    if (last) {
-      const owns = (SV.bu || []).includes(STMAG) || owned(STMAG);
-      if (!owns) { SV.bu = SV.bu || []; SV.bu.push(STMAG); feed.push({ t: '🔥 Magmaar débloqué !', l: 8 }); } else gain(0, 500);
-      STR.ph = 'idle'; save(); leaveEvent();
-    } else { STR.ch++; stLoad(0); }
+    const rw = stChap().reward;
+    if (rw) {
+      const owns = (SV.bu || []).includes(rw.ch) || owned(rw.ch);
+      if (!owns) { SV.bu = SV.bu || []; SV.bu.push(rw.ch); feed.push({ t: '🌟 ' + rw.n + ' débloqué ! (onglet Personnages)', l: 8 }); } else gain(0, 500);
+      save();
+    }
+    if (last) { STR.ph = 'idle'; leaveEvent(); } else { STR.ch++; stLoad(0); }
   });
 }
 
