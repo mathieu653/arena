@@ -417,9 +417,14 @@ wss.on('connection', (ws, req) => {
       accReply(me, k, a, 0, 1);
     } else if (m.t === 'acc_save') {
       const a = me.acc && ACC[me.acc];
-      if (a && Date.now() - (me.accT || 0) > 800) {
+      if (a) { // anti-spam : une sauvegarde reçue trop vite est différée (et non perdue), seule la dernière compte
         const sv = cleanSv(m.d);
-        if (sv && sv.rk) { me.accT = Date.now(); a.sv = sv; a.t = Date.now(); accDirty = true; }
+        if (sv && sv.rk) {
+          me.accPend = sv;
+          const apply = () => { me.accTm = null; if (!me.accPend) return; me.accT = Date.now(); a.sv = me.accPend; a.t = Date.now(); me.accPend = null; accDirty = true; };
+          const wait = 800 - (Date.now() - (me.accT || 0));
+          if (wait <= 0) apply(); else if (!me.accTm) me.accTm = setTimeout(apply, wait);
+        }
       }
     } else if (m.t === 'acc_out') {
       const a = ACC[accKey(m.d && m.d.u)];
