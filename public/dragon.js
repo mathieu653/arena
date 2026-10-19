@@ -200,9 +200,10 @@ function pyUpd(dt, s, held) {
   if (SV.mode < 2 && me.al) for (const k in R) {
     const o = R[k];
     if (!o.br || !o.al || !CH[o.c] || !CH[o.c].dg) continue;
+    if (me.fy > 0 && !o.fy) continue; // en vol, seuls les autres dragons en vol peuvent me toucher
     if (pyIn(o.x, o.y, o.a, me.x, me.y, CH[me.c].r) && los(o.x, o.y, me.x, me.y)) {
       const f = me.fl, h0 = me.hp;
-      hurtMe(PYP * dt, k);
+      hurtMe(PYP * dt, k, me.fy > 0 && o.fy); // deux dragons en vol peuvent se toucher (sinon l'envol rend invulnérable)
       if (me.al && me.hp < h0) { me.fl = f > 0 ? f : .04; me.brn = Math.max(me.brn || 0, 1.5); me.bro = k; }
     }
   }
