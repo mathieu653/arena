@@ -26,13 +26,13 @@ function dragonUpd(dt) {
 }
 
 // ---------- Dessin ----------
-function dgFlame(len, half, t, fin) { // un cône de flammes depuis l'origine locale, vers +x
+function dgFlame(len, half, t, fin, k) { // un cône de flammes depuis l'origine locale, vers +x
   const N = 30;
   g.save(); g.globalCompositeOperation = 'lighter';
   const gr = g.createLinearGradient(0, 0, len, 0); gr.addColorStop(0, 'rgba(255,240,170,.55)'); gr.addColorStop(.45, 'rgba(255,120,30,.34)'); gr.addColorStop(1, 'rgba(160,30,10,0)');
   g.fillStyle = gr; g.beginPath(); g.moveTo(0, 0); g.lineTo(len, -Math.tan(half) * len * 1.05); g.lineTo(len, Math.tan(half) * len * 1.05); g.closePath(); g.fill();
   for (let i = 0; i < N; i++) {
-    const u = ((i / N) + t * (1.3 + (i % 5) * .08)) % 1, sp = Math.sin(i * 12.9898 + t * 9 + i * u) * Math.tan(half) * len * u * .95, x = u * len, rr = 7 + u * 30 + (i % 3) * 3;
+    const u = ((i / N) + t * (1.3 + (i % 5) * .08)) % 1, sp = Math.sin(i * 12.9898 + t * 9 + i * u) * Math.tan(half) * len * u * .95, x = u * len, rr = (7 + u * 30 + (i % 3) * 3) * (k || 1);
     const col = u < .18 ? '255,248,190' : u < .5 ? '255,150,40' : '210,60,16';
     g.fillStyle = 'rgba(' + col + ',' + (.62 * (1 - u) + .08) + ')'; g.beginPath(); g.arc(x, sp, rr, 0, 7); g.fill();
   }
@@ -62,9 +62,9 @@ function dgWing(q, r, ws, flap, en, t, fl) { // une aile (q = ±1) : os, doigts 
   g.restore();
 }
 
-function drawDragon(r, st, tp, en, fl, t) { // repère local : +x = direction du boss
-  const e = u => u * u * (3 - 2 * u), fin = en >= 2, rage = en >= 1;
-  const air = st == 7 ? Math.sin(Math.PI * Math.min(1, tp)) : 0, pul = .5 + .5 * Math.sin(t * (rage ? 8 : 3));
+function drawDragon(r, st, tp, en, fl, t, fx) { // repère local : +x = direction du boss ; fx (perso joueur) = {len, half, fly, k}
+  const e = u => u * u * (3 - 2 * u), fin = en >= 2, rage = en >= 1, fly = !!(fx && fx.fly), BL = fx && fx.len || DBL, BH = fx && fx.half || DBH;
+  const air = fly ? 1 : st == 7 ? Math.sin(Math.PI * Math.min(1, tp)) : 0, pul = .5 + .5 * Math.sin(t * (rage ? 8 : 3));
   // ----- aura de fureur -----
   if (fin) {
     g.save(); g.globalCompositeOperation = 'lighter';
@@ -93,7 +93,7 @@ function drawDragon(r, st, tp, en, fl, t) { // repère local : +x = direction du
   const claw = (x, y, q, s) => { g.fillStyle = '#4a0e0c'; g.strokeStyle = '#150505'; g.lineWidth = 3; g.beginPath(); g.ellipse(x, y, r * .26 * s, r * .15 * s, q * .5, 0, 7); g.fill(); g.stroke(); g.fillStyle = '#e8d9b8'; for (let i = -1; i <= 1; i++) { g.beginPath(); g.moveTo(x + r * .2 * s, y + q * r * (.12 * s + i * .07)); g.lineTo(x + r * .42 * s, y + q * r * (.2 * s + i * .12)); g.lineTo(x + r * .22 * s, y + q * r * (.17 * s + i * .07)); g.closePath(); g.fill(); } };
   for (const q of [-1, 1]) claw(-r * .42, q * r * .58, q, 1);
   // ----- ailes -----
-  const ws = st == 7 ? .95 + .45 * air : st == 4 ? 1.2 : st == 1 ? 1.05 + .15 * tp : .86, flap = st == 7 ? Math.sin(t * 15) * .6 : st == 4 ? -.15 + .1 * Math.sin(t * 10) : Math.sin(t * (rage ? 5 : 3.2)) * (.18 + (rage ? .1 : 0));
+  const ws = st == 7 || fly ? .95 + .45 * air : st == 4 ? 1.2 : st == 1 ? 1.05 + .15 * tp : .86, flap = st == 7 || fly ? Math.sin(t * 15) * .6 : st == 4 ? -.15 + .1 * Math.sin(t * 10) : Math.sin(t * (rage ? 5 : 3.2)) * (.18 + (rage ? .1 : 0));
   dgWing(-1, r, ws, flap, rage, t, fl); dgWing(1, r, ws, flap, rage, t, fl);
   // ----- corps -----
   g.save();
@@ -151,7 +151,64 @@ function drawDragon(r, st, tp, en, fl, t) { // repère local : +x = direction du
     g.save(); g.globalCompositeOperation = 'lighter'; const mx = r * 1.7, gl = g.createRadialGradient(mx, 0, 1, mx, 0, 14 + 40 * tp); gl.addColorStop(0, 'rgba(255,230,140,.95)'); gl.addColorStop(1, 'rgba(255,80,20,0)'); g.fillStyle = gl; g.beginPath(); g.arc(mx, 0, 14 + 40 * tp, 0, 7); g.fill(); g.restore();
   }
   // ----- SOUFFLE -----
-  if (st == 6) for (const a of (fin ? [-.72, 0, .72] : [0])) { g.save(); g.rotate(a); g.translate(r * 1.5, 0); dgFlame(DBL - r * 1.5, DBH, t, fin); g.restore(); }
+  if (st == 6) for (const a of (fin ? [-.72, 0, .72] : [0])) { g.save(); g.rotate(a); g.translate(r * 1.5, 0); dgFlame(BL - r * 1.5, BH, t, fin, fx && fx.k); g.restore(); }
   if (fl > 0) { g.fillStyle = 'rgba(255,255,255,.35)'; g.beginPath(); g.arc(0, 0, r, 0, 7); g.fill(); }
   g.restore();
+}
+
+// =====================================================================================
+//  PERSO JOUEUR « Pyrax » : dragon (même dessin que le boss, en petit)
+//   • Attaque : SOUFFLE DE FEU en cône (maintenir le tir). Les dégâts aux joueurs sont appliqués côté victime
+//     (comme les balles) : chaque client envoie « br » (je souffle) + l'angle dans sa présence.
+//   • Ultime « Envol » : vole PYT secondes -> invulnérable, un peu plus rapide, le souffle continue en l'air.
+//     Brisé si le dragon entre dans une zone anti-pouvoirs.
+// =====================================================================================
+const PYL = 270, PYH = .3;   // portée du souffle (depuis le centre) et demi-angle du cône
+const PYP = 55, PYM = 85;    // dégâts par seconde : sur les joueurs / sur bots, boss, sbires
+const PYT = 6;               // durée de l'envol (s)
+
+const pyIn = (ox, oy, a, tx, ty, r) => {
+  const dx = tx - ox, dy = ty - oy, d = Math.hypot(dx, dy);
+  if (d > PYL + r) return 0;
+  if (d < r + 10) return 1;
+  return Math.abs(angd(Math.atan2(dy, dx), a)) < PYH + Math.min(.5, r / d);
+};
+
+// Appelée à chaque image (joueur vivant) : envol, souffle de MON dragon, et dégâts reçus des souffles des autres
+function pyUpd(dt, s, held) {
+  if (s.dg && me.fy > 0 && inIx(me.x, me.y)) { me.fy = 0; feed.push({ t: 'Envol brisé par la zone anti-pouvoirs', l: 3 }); }
+  if (s.dg && me.fy > 0) {
+    me.fy -= dt; me.ri = Math.max(me.ri, .3); me.brn = 0; // invulnérable tant qu'il vole
+    if (Math.random() < dt * 30) ptc(me.x + (Math.random() - .5) * 50, me.y + (Math.random() - .5) * 50, Math.random() < .5 ? '#ff8a2a' : '#e8d9b8');
+    if (me.fy <= 0) { me.fy = 0; feed.push({ t: 'Pyrax se pose', l: 2 }); for (let i = 0; i < 24; i++) ptc(me.x, me.y, i % 2 ? '#ff8a2a' : '#e8d9b8'); }
+  }
+  me.br = s.dg && held && me.ro <= 0 && me.inv <= 0 && !me.god && !(me.lz > 0) ? 1 : 0;
+  if (me.br) {
+    me.fr = .6;
+    const a = me.a, ox = me.x, oy = me.y, dm = PYM * dt * svDm(), myId = myPeer || 'me';
+    for (const o of bots) if (o.hp > 0 && pyIn(ox, oy, a, o.x, o.y, o.r || 15) && los(ox, oy, o.x, o.y)) hitBot(o, dm);
+    if (BS.al) {
+      const d = Math.hypot(BS.x - ox, BS.y - oy);
+      if (d - BS.r < PYL && Math.abs(angd(Math.atan2(BS.y - oy, BS.x - ox), a)) < PYH + Math.asin(Math.min(1, BS.r / Math.max(d, 1)))) bossHit(dm);
+    }
+    for (const m of MINL.slice()) if (pyIn(ox, oy, a, m.x, m.y, MNR)) minHit(m, dm);
+    for (const o of DP) if (['tur', 'bot', 'trap', 'tp', 'sum'].includes(o.k) && o.own !== myId && pyIn(ox, oy, a, o.x, o.y, 12)) o.hp -= dm;
+    if (Math.random() < dt * 40) { const u = 60 + Math.random() * (PYL - 80); ptc(ox + Math.cos(a) * u, oy + Math.sin(a) * u, Math.random() < .5 ? '#ff8a2a' : '#ffd23a'); }
+    try { if (AC && !mute && Math.random() < dt * 7) tone(70 + Math.random() * 40, AC.currentTime, .12, 'sawtooth', .04); } catch (e) { }
+  }
+  // dégâts reçus : souffles des autres joueurs-dragons (appliqués chez la victime)
+  if (SV.mode < 2 && me.al) for (const k in R) {
+    const o = R[k];
+    if (!o.br || !o.al || !CH[o.c] || !CH[o.c].dg) continue;
+    if (pyIn(o.x, o.y, o.a, me.x, me.y, CH[me.c].r) && los(o.x, o.y, me.x, me.y)) {
+      const f = me.fl, h0 = me.hp;
+      hurtMe(PYP * dt, k);
+      if (me.al && me.hp < h0) { me.fl = f > 0 ? f : .04; me.brn = Math.max(me.brn || 0, 1.5); me.bro = k; }
+    }
+  }
+}
+
+// Dessin du perso (repère local : +x = visée) : dragon du boss à l'échelle du joueur ; en vol : grandes ailes battantes
+function drawPyrax(r, br, fy, fl, t) {
+  drawDragon(r, br ? 6 : 0, 0, fy ? 1 : 0, fl, t, { len: fy ? PYL / 1.3 : PYL, half: PYH, fly: fy, k: .5 });
 }

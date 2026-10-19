@@ -391,7 +391,7 @@ wss.on('connection', (ws, req) => {
       const d = m.d;
       me.presence = { x: num(d.x), y: num(d.y), a: num(d.a), hp: num(d.hp), c: num(d.c) & 31, s: num(d.s) & 31, b: Math.min(100, Math.max(0, num(d.b))), k: num(d.k),
         al: d.al ? 1 : 0, iv: d.iv ? 1 : 0, sh: d.sh ? 1 : 0, v: d.v == null ? null : num(d.v) & 3, m: num(d.m) & 15, n: String(d.n || '').slice(0, 14), pk: num(d.pk) & 15, rd: Math.max(0, Math.min(1e9, Math.floor(num(d.rd)))), rv: d.rv ? 1 : 0, md: num(d.md) & 3, pl: d.pl ? 1 : 0, dd: num(d.dd) & 255, rk: num(d.rk) & 7,
-        pw: d.pw ? 1 : 0, go: d.go ? 1 : 0, sn: d.sn ? 1 : 0, cs: d.cs ? 1 : 0,
+        pw: d.pw ? 1 : 0, go: d.go ? 1 : 0, sn: d.sn ? 1 : 0, cs: d.cs ? 1 : 0, br: d.br ? 1 : 0, fy: d.fy ? 1 : 0,
         cx: /^[0-9.]{0,20}$/.test(String(d.cx || '')) ? String(d.cx || '') : '' };
       dirty = true;
     } else if (m.t === 'acc_auth' && m.d) { // connexion, ou création du compte s'il n'existe pas encore
