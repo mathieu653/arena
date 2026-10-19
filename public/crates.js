@@ -137,9 +137,7 @@ function crParts(kind, th, r, t, n) { // particules thématiques autour du centr
 function crFill(it, r) {
   const th = CRTH[it.th], t = tt;
   if (it.r == 0) return th[1];
-  if (it.r == 5) { const f = th[3];
-    if (f == 'void' || f == 'eclipse') { const gr = g.createRadialGradient(0, 0, 2, 0, 0, r * 1.1); gr.addColorStop(0, '#05020c'); gr.addColorStop(.7, crMix('#05020c', th[1], .35 + .2 * Math.sin(t * 3))); gr.addColorStop(1, th[1]); return gr }
-    const s = .5 + .5 * Math.sin(t * 2), gr = g.createLinearGradient(-r, -r, r, r); gr.addColorStop(0, crMix(th[1], th[2], s)); gr.addColorStop(.5, th[1]); gr.addColorStop(1, crMix(th[2], th[1], s)); return gr }
+  if (it.r == 5) return crSecFill(it, r, t);
   if (it.th == 13) { const gr = g.createLinearGradient(-r, -r, r, r); for (let i = 0; i < 4; i++) gr.addColorStop(i / 3, 'hsl(' + ((t * 120 + i * 80) % 360) + ',95%,62%)'); return gr }
   if (it.r == 1) return crMix(th[1], th[2], .5 + .45 * Math.sin(t * 3));
   const gr = g.createRadialGradient(Math.cos(t * 2) * r * .4, Math.sin(t * 2) * r * .4, 1, 0, 0, r * 1.1);
@@ -166,39 +164,129 @@ function crUp(s, it) { // décorations droites (couronne, auréole, ailes) pour 
   }
   g.restore();
 }
-// ---------- Skins SECRETS : halo, anneaux orbitaux, particules + signature propre à chaque skin ----------
+// ---------- Skins SECRETS : chaque skin a sa propre forme de corps, ses balles, son pouvoir et son kill ----------
 const crSecC = (it, i) => crMix(CRTH[it.th][1], CRTH[it.th][2], .5 + .5 * Math.sin(tt * 3 + (i || 0)));
-function crSecBody(s, it) { // repère du joueur (tourné)
-  const th = CRTH[it.th], r = s.r, t = tt, f = th[3], c1 = th[1], c2 = th[2]; g.save(); const A = g.globalAlpha;
-  g.globalCompositeOperation = 'lighter'; const hg = g.createRadialGradient(0, 0, r * .4, 0, 0, r * 2.4); hg.addColorStop(0, c1); hg.addColorStop(1, 'rgba(0,0,0,0)');
-  g.globalAlpha = A * (.28 + .12 * Math.sin(t * 4)); g.fillStyle = hg; g.beginPath(); g.arc(0, 0, r * 2.4, 0, 7); g.fill(); g.globalCompositeOperation = 'source-over'; g.globalAlpha = A;
-  g.lineWidth = 2; for (let i = 0; i < 3; i++) { g.strokeStyle = i % 2 ? c2 : c1; g.save(); g.rotate(t * (1.2 + i * .5) * (i % 2 ? -1 : 1) + i * 2.1); g.beginPath(); g.ellipse(0, 0, r * (1.5 + i * .28), r * (.5 + i * .18), 0, 0, 7); g.stroke(); g.restore() }
-  const eyes = () => { g.fillStyle = '#fff'; g.beginPath(); g.arc(r * .35, -r * .35, 2.4, 0, 7); g.arc(r * .35, r * .35, 2.4, 0, 7); g.fill() };
-  if (f == 'void') { // trou noir : horizon des événements + bras spiralés
-    g.fillStyle = 'rgba(6,0,16,.88)'; g.beginPath(); g.arc(0, 0, r * .74, 0, 7); g.fill(); g.strokeStyle = c2; g.lineWidth = 2; g.globalAlpha = A * (.6 + .4 * Math.sin(t * 8)); g.beginPath(); g.arc(0, 0, r * .76, 0, 7); g.stroke(); g.globalAlpha = A; g.strokeStyle = c1;
-    for (let i = 0; i < 3; i++) { g.beginPath(); for (let j = 0; j <= 14; j++) { const a = t * 3 + i * 2.094 + j * .22, d = r * (.9 + j * .12); g.lineTo(Math.cos(a) * d, Math.sin(a) * d) } g.stroke() } eyes()
-  } else if (f == 'sun') { // couronne solaire pulsante
-    for (let i = 0; i < 12; i++) { const a = i * .5236 + t * .8, L = r * (1.55 + .35 * Math.sin(t * 5 + i * 1.7)); g.fillStyle = i % 2 ? c2 : c1; g.globalAlpha = A * .85; g.beginPath(); g.moveTo(Math.cos(a - .13) * r * .95, Math.sin(a - .13) * r * .95); g.lineTo(Math.cos(a) * L, Math.sin(a) * L); g.lineTo(Math.cos(a + .13) * r * .95, Math.sin(a + .13) * r * .95); g.closePath(); g.fill() } g.globalAlpha = A
-  } else if (f == 'ice') { // cristaux de glace en rotation
-    for (let i = 0; i < 6; i++) { g.save(); g.rotate(i * 1.0472 - t * .6); g.fillStyle = c2; g.strokeStyle = c1; g.lineWidth = 1.5; g.beginPath(); g.moveTo(r * 1.1, 0); g.lineTo(r * 1.5, -r * .2); g.lineTo(r * (2 + .15 * Math.sin(t * 4 + i)), 0); g.lineTo(r * 1.5, r * .2); g.closePath(); g.fill(); g.stroke(); g.restore() }
-  } else if (f == 'glitch') { // image dédoublée + tranches qui sautent
-    const sd = Math.floor(t * 14), j = (crRnd(sd) - .5) * 8; g.lineWidth = 2; g.strokeStyle = c1; g.globalAlpha = A * .8; g.beginPath(); g.arc(j, -j * .4, r * 1.02, 0, 7); g.stroke(); g.strokeStyle = c2; g.beginPath(); g.arc(-j, j * .4, r * 1.02, 0, 7); g.stroke();
-    g.globalAlpha = A * .75; for (let i = 0; i < 3; i++) { g.fillStyle = i % 2 ? c1 : c2; g.fillRect(-r + (crRnd(sd + i) - .5) * 10, (crRnd(sd + i + 5) - .5) * r * 1.8, r * 1.6, 2) } g.globalAlpha = A
-  } else if (f == 'aurora') { // rubans d'aurore ondulants
-    g.lineWidth = 3; for (let k = 0; k < 3; k++) { g.strokeStyle = crMix(c1, c2, k / 2); g.globalAlpha = A * .85; g.beginPath(); for (let j = 0; j <= 24; j++) { const a = j / 24 * 6.2832, d = r * (1.3 + .18 * Math.sin(a * 3 + t * 3 + k * 2) + k * .12); g.lineTo(Math.cos(a) * d, Math.sin(a) * d) } g.closePath(); g.stroke() } g.globalAlpha = A
-  } else { // éclipse : disque noir + couronne dorée
-    g.fillStyle = '#05030a'; g.beginPath(); g.arc(0, 0, r * .8, 0, 7); g.fill(); g.strokeStyle = c1; g.lineWidth = 3; g.beginPath(); g.arc(0, 0, r * .86, 0, 7); g.stroke(); g.strokeStyle = c2; g.lineWidth = 1.5; g.globalAlpha = A * .75;
-    for (let i = 0; i < 16; i++) { const a = i * .3927 + t * .5, L = r * (1.15 + .3 * Math.sin(t * 6 + i)); g.beginPath(); g.moveTo(Math.cos(a) * r * .95, Math.sin(a) * r * .95); g.lineTo(Math.cos(a) * L, Math.sin(a) * L); g.stroke() } g.globalAlpha = A; eyes()
-  }
-  crParts(f, th, r, t, 9); g.restore();
+function crSecFill(it, r, t) {
+  const th = CRTH[it.th], f = th[3], c1 = th[1], c2 = th[2], s = .5 + .5 * Math.sin(t * 2); let gr;
+  if (f == 'void' || f == 'eclipse') { gr = g.createRadialGradient(0, 0, 2, 0, 0, r * 1.1); gr.addColorStop(0, '#05020c'); gr.addColorStop(.7, crMix('#05020c', c1, .35 + .2 * Math.sin(t * 3))); gr.addColorStop(1, c1); return gr }
+  if (f == 'sun') { gr = g.createRadialGradient(0, 0, 1, 0, 0, r * 1.1); gr.addColorStop(0, '#fffbe0'); gr.addColorStop(.45, c2); gr.addColorStop(1, crMix(c1, '#b01000', s)); return gr }
+  if (f == 'ice') { gr = g.createLinearGradient(-r, -r, r, r); gr.addColorStop(0, '#ffffff'); gr.addColorStop(.5, crMix(c2, c1, s)); gr.addColorStop(1, c1); return gr }
+  if (f == 'glitch') return Math.sin(t * 23) > .65 ? c2 : crMix('#0a0f1c', c1, .45 + .3 * Math.sin(t * 5));
+  gr = g.createLinearGradient(-r, -r, r, r); gr.addColorStop(0, crMix(c1, c2, s)); gr.addColorStop(.5, crMix(c2, '#ffffff', .25)); gr.addColorStop(1, crMix(c2, c1, s)); return gr;
 }
-function crSecUp(s, it) { // décorations droites : auréole, ailes de lumière, couronne (soleil / éclipse)
-  const th = CRTH[it.th], r = s.r, t = tt, f = th[3]; g.save(); const A = g.globalAlpha;
-  g.lineWidth = 2.5; g.strokeStyle = crSecC(it, 0); g.beginPath(); g.ellipse(0, -r - 8 + Math.sin(t * 3) * 1.5, r * .7, 3.5, 0, 0, 7); g.stroke();
-  const fl = Math.sin(t * 6) * .3;
-  for (const q of [-1, 1]) for (const [sc, col, al] of [[1, th[2], .45], [.65, th[1], .55]]) { g.globalAlpha = A * al; g.fillStyle = col; g.beginPath(); g.moveTo(q * r * .7, -2); g.quadraticCurveTo(q * r * 2 * sc, -r * (1.3 + fl) * sc, q * r * 2.7 * sc, -r * .1); g.quadraticCurveTo(q * r * 1.9 * sc, -r * .1, q * r * 1.5 * sc, r * .5 * sc); g.closePath(); g.fill() }
-  g.globalAlpha = A; if (f == 'sun' || f == 'eclipse') crCrown(0, -r - 17 + Math.sin(t * 3) * 1.5, 8, th[1]);
+function crSecBody(s, it) { // repère du joueur (tourné) : l'arrière est en -x
+  const th = CRTH[it.th], r = s.r, t = tt, f = th[3], c1 = th[1], c2 = th[2]; g.save(); const A = g.globalAlpha;
+  g.globalCompositeOperation = 'lighter'; const hg = g.createRadialGradient(0, 0, r * .4, 0, 0, r * 2.2); hg.addColorStop(0, c1); hg.addColorStop(1, 'rgba(0,0,0,0)');
+  g.globalAlpha = A * (.22 + .1 * Math.sin(t * 4)); g.fillStyle = hg; g.beginPath(); g.arc(0, 0, r * 2.2, 0, 7); g.fill(); g.globalCompositeOperation = 'source-over'; g.globalAlpha = A;
+  const eyes = () => { g.fillStyle = '#fff'; g.beginPath(); g.arc(r * .35, -r * .35, 2.4, 0, 7); g.arc(r * .35, r * .35, 2.4, 0, 7); g.fill() };
+  if (f == 'void') { // trou noir : disque d'accrétion incliné, horizon des événements, matière aspirée
+    g.save(); g.rotate(t * .7); g.scale(1, .38); g.strokeStyle = c1; g.lineWidth = 7; g.globalAlpha = A * .7; g.beginPath(); g.arc(0, 0, r * 1.75, 0, 7); g.stroke(); g.strokeStyle = c2; g.lineWidth = 2; g.beginPath(); g.arc(0, 0, r * 1.75, 0, 7); g.stroke(); g.restore(); g.globalAlpha = A;
+    g.fillStyle = 'rgba(4,0,12,.93)'; g.beginPath(); g.arc(0, 0, r * .8, 0, 7); g.fill(); g.strokeStyle = c2; g.lineWidth = 2; g.globalAlpha = A * (.6 + .4 * Math.sin(t * 8)); g.beginPath(); g.arc(0, 0, r * .82, 0, 7); g.stroke(); g.globalAlpha = A;
+    for (let i = 0; i < 12; i++) { const ph = (t * .8 + i / 12) % 1, a = i * 2.4 + ph * 5, d = r * (2.3 - ph * 1.5); g.globalAlpha = A * ph; g.fillStyle = i % 2 ? c1 : c2; g.fillRect(Math.cos(a) * d - 1.5, Math.sin(a) * d - 1.5, 3, 3) } g.globalAlpha = A; eyes()
+  } else if (f == 'sun') { // étoile : longue traîne de flammes + couronne de rayons
+    for (let i = 0; i < 14; i++) { const ph = (t * 1.3 + i / 14) % 1; crShape('flame', -r * (.6 + ph * 2.6), Math.sin(i * 2.7 + t * 6) * r * .45 * (1 - ph * .4), r * .65 * (1 - ph) + 2, crMix(c2, c1, ph), (1 - ph) * A, -1.5708) }
+    for (let i = 0; i < 10; i++) { const a = i * .6283 + t * .8, L = r * (1.4 + .3 * Math.sin(t * 5 + i * 1.7)); g.fillStyle = i % 2 ? c2 : c1; g.globalAlpha = A * .85; g.beginPath(); g.moveTo(Math.cos(a - .15) * r * .95, Math.sin(a - .15) * r * .95); g.lineTo(Math.cos(a) * L, Math.sin(a) * L); g.lineTo(Math.cos(a + .15) * r * .95, Math.sin(a + .15) * r * .95); g.closePath(); g.fill() } g.globalAlpha = A
+  } else if (f == 'ice') { // flocon hexagonal : 6 pointes de cristal, hexagone intérieur, anneau de givre
+    g.save(); g.rotate(-t * .5); g.strokeStyle = c2; g.lineWidth = 2; g.beginPath(); for (let i = 0; i <= 6; i++) g.lineTo(Math.cos(i * 1.0472) * r * 1.0, Math.sin(i * 1.0472) * r * 1.0); g.stroke(); g.restore();
+    for (let i = 0; i < 6; i++) { g.save(); g.rotate(i * 1.0472 + t * .35); g.fillStyle = c2; g.strokeStyle = c1; g.lineWidth = 1.5; g.beginPath(); g.moveTo(r * 1.1, 0); g.lineTo(r * 1.55, -r * .17); g.lineTo(r * (2.1 + .15 * Math.sin(t * 4 + i)), 0); g.lineTo(r * 1.55, r * .17); g.closePath(); g.fill(); g.stroke(); g.restore() }
+    g.save(); g.setLineDash([4, 5]); g.rotate(t * .8); g.strokeStyle = c1; g.lineWidth = 2; g.beginPath(); g.arc(0, 0, r * 1.25, 0, 7); g.stroke(); g.restore(); crParts('ice', th, r, t, 7)
+  } else if (f == 'glitch') { // cadre de visée carré, image dédoublée RGB, tranches qui sautent
+    const sd = Math.floor(t * 14), j = (crRnd(sd) - .5) * 8; g.lineWidth = 2; g.strokeStyle = c1; g.globalAlpha = A * .8; g.beginPath(); g.arc(j, -j * .4, r * 1.02, 0, 7); g.stroke(); g.strokeStyle = c2; g.beginPath(); g.arc(-j, j * .4, r * 1.02, 0, 7); g.stroke(); g.globalAlpha = A;
+    if (Math.sin(t * 30) > -.75) { const z = r * 1.45, l = r * .5; g.strokeStyle = c1; g.lineWidth = 2.5; for (const sx of [-1, 1]) for (const sy of [-1, 1]) { g.beginPath(); g.moveTo(sx * z, sy * (z - l)); g.lineTo(sx * z, sy * z); g.lineTo(sx * (z - l), sy * z); g.stroke() } }
+    g.globalAlpha = A * .75; for (let i = 0; i < 4; i++) { g.fillStyle = i % 2 ? c1 : c2; g.fillRect(-r + (crRnd(sd + i) - .5) * 12, (crRnd(sd + i + 5) - .5) * r * 1.9, r * 1.7, 2) } g.globalAlpha = A; crParts('glitch', th, r, t, 5)
+  } else if (f == 'aurora') { // 4 longs rubans fluides qui s'étirent derrière
+    g.lineCap = 'round'; for (let k = 0; k < 4; k++) { g.strokeStyle = crMix(c1, c2, k / 3); g.lineWidth = 5 - k * .8; g.globalAlpha = A * .8; g.beginPath(); for (let j = 0; j <= 20; j++) g.lineTo(-r * .6 - j * r * .24, Math.sin(j * .45 - t * 4 + k * 1.6) * r * (.25 + j * .04) + (k - 1.5) * r * .35); g.stroke() } g.globalAlpha = A; crParts('aurora', th, r, t, 5)
+  } else { // éclipse : disque noir, couronne de 24 rayons dorés, 3 glyphes en orbite
+    g.fillStyle = '#05030a'; g.beginPath(); g.arc(0, 0, r * .8, 0, 7); g.fill(); g.strokeStyle = c1; g.lineWidth = 3; g.beginPath(); g.arc(0, 0, r * .86, 0, 7); g.stroke(); g.strokeStyle = c2; g.lineWidth = 1.5; g.globalAlpha = A * .75;
+    for (let i = 0; i < 24; i++) { const a = i * .2618 + t * .5, L = r * (1.2 + (i % 2 ? .45 : .2) * (.6 + .4 * Math.sin(t * 6 + i))); g.beginPath(); g.moveTo(Math.cos(a) * r * .95, Math.sin(a) * r * .95); g.lineTo(Math.cos(a) * L, Math.sin(a) * L); g.stroke() } g.globalAlpha = A;
+    for (let i = 0; i < 3; i++) { const a = -t * 1.6 + i * 2.094; crShape('star', Math.cos(a) * r * 1.7, Math.sin(a) * r * 1.7, 4.5, c1, 1, t * 3) } eyes()
+  }
   g.restore();
+}
+function crSecUp(s, it) { // décorations droites (au-dessus du joueur) : différentes pour chaque skin
+  const th = CRTH[it.th], r = s.r, t = tt, f = th[3], c1 = th[1], c2 = th[2]; g.save(); const A = g.globalAlpha, hy = -r - 10 + Math.sin(t * 3) * 1.5;
+  if (f == 'void') { g.fillStyle = '#05000e'; g.strokeStyle = c1; g.lineWidth = 2; g.beginPath(); g.arc(0, hy - 4, 6, 0, 7); g.fill(); g.stroke(); for (let i = 0; i < 3; i++) { const a = t * 3 + i * 2.094; g.fillStyle = c2; g.fillRect(Math.cos(a) * 11 - 1.5, hy - 4 + Math.sin(a) * 4 - 1.5, 3, 3) } }
+  else if (f == 'sun') { for (let i = -2; i <= 2; i++) crShape('flame', i * 6, hy - 2 - (2 - Math.abs(i)) * 2.5, 7 + Math.sin(t * 9 + i) * 1.6, i % 2 ? c2 : c1, A, 0) }
+  else if (f == 'ice') { g.fillStyle = c2; g.strokeStyle = c1; g.lineWidth = 1.5; for (let i = -2; i <= 2; i++) { const h = 11 - Math.abs(i) * 2.5; g.beginPath(); g.moveTo(i * 5 - 3, hy + 3); g.lineTo(i * 5, hy + 3 - h); g.lineTo(i * 5 + 3, hy + 3); g.closePath(); g.fill(); g.stroke() } }
+  else if (f == 'glitch') { const on = Math.sin(t * 20) > -.5, j = (crRnd(Math.floor(t * 12)) - .5) * 5; if (on) { g.strokeStyle = c1; g.lineWidth = 2; g.strokeRect(-8 + j, hy - 7, 16, 11); g.strokeStyle = c2; g.strokeRect(-8 - j, hy - 7, 16, 11) } g.fillStyle = c2; g.fillRect(-12 + j, hy - 2, 24, 2) }
+  else if (f == 'aurora') { g.lineWidth = 3; g.lineCap = 'round'; for (let k = 0; k < 2; k++) { g.strokeStyle = k ? c2 : c1; g.beginPath(); for (let j = 0; j <= 16; j++) { const a = j / 16 * 6.2832; g.lineTo(Math.cos(a) * r * .75, hy + Math.sin(a) * 3.5 + Math.sin(a * 3 + t * 4 + k * 2) * 2.5) } g.stroke() } }
+  else { g.lineWidth = 2.5; g.strokeStyle = crSecC(it, 0); g.beginPath(); g.ellipse(0, hy, r * .7, 3.5, 0, 0, 7); g.stroke(); const fl = Math.sin(t * 6) * .3;
+    for (const q of [-1, 1]) { g.globalAlpha = A * .5; g.fillStyle = c2; g.beginPath(); g.moveTo(q * r * .7, -2); g.quadraticCurveTo(q * r * 2, -r * (1.3 + fl), q * r * 2.7, -r * .1); g.quadraticCurveTo(q * r * 1.9, -r * .1, q * r * 1.5, r * .5); g.closePath(); g.fill() } g.globalAlpha = A; crCrown(0, hy - 8, 8, c1) }
+  g.restore();
+}
+function crSecMuz(it, x1) { // bout du canon : une forme différente par skin
+  const th = CRTH[it.th], f = th[3], t = tt, p = .5 + .5 * Math.sin(t * 10); g.save(); g.translate(x1, 0);
+  if (f == 'void') { g.fillStyle = '#05000e'; g.beginPath(); g.arc(0, 0, 4 + p * 1.5, 0, 7); g.fill(); g.strokeStyle = th[1]; g.lineWidth = 1.5; g.stroke() }
+  else if (f == 'sun') crShape('flame', 3, 0, 7 + p * 3, th[2], 1, 1.5708);
+  else if (f == 'ice') crShape('snow', 0, 0, 6, th[2], 1, t * 2);
+  else if (f == 'glitch') { g.fillStyle = Math.sin(t * 25) > 0 ? th[1] : th[2]; g.fillRect(-3, -3, 6 + p * 3, 6) }
+  else if (f == 'aurora') crShape('petal', 0, 0, 6 + p * 2, th[2], .9, t * 3);
+  else crShape('star', 0, 0, 6 + p * 2, th[1], 1, t * 2);
+  g.restore();
+}
+function crSecBul(it, x, y, ux, uy) { // balle : une forme et une traînée différentes par skin
+  const th = CRTH[it.th], f = th[3], t = tt, c1 = th[1], c2 = th[2], ang = Math.atan2(uy, ux);
+  if (f == 'void') { g.globalAlpha = .5; g.strokeStyle = c1; g.lineWidth = 3; g.beginPath(); g.moveTo(x, y); g.lineTo(x - ux * 26, y - uy * 26); g.stroke(); g.globalAlpha = 1; g.fillStyle = '#05000e'; g.beginPath(); g.arc(x, y, 5, 0, 7); g.fill(); g.strokeStyle = c2; g.lineWidth = 1.6; g.stroke(); g.globalAlpha = .45; g.beginPath(); g.arc(x, y, 8.5 + Math.sin(t * 15), 0, 7); g.stroke(); g.globalAlpha = 1 }
+  else if (f == 'sun') { g.shadowColor = c1; g.shadowBlur = 14; g.fillStyle = c2; g.beginPath(); g.arc(x, y, 5, 0, 7); g.fill(); g.fillStyle = '#fff'; g.beginPath(); g.arc(x, y, 2.2, 0, 7); g.fill(); g.shadowBlur = 0; for (let j = 1; j <= 5; j++) crShape('flame', x - ux * j * 8, y - uy * j * 8, 8 - j, j % 2 ? c2 : c1, 1 - j * .17, Math.atan2(-ux, uy)) }
+  else if (f == 'ice') { g.save(); g.translate(x, y); g.rotate(ang); g.fillStyle = c2; g.strokeStyle = c1; g.lineWidth = 1.5; g.beginPath(); g.moveTo(10, 0); g.lineTo(0, -3.5); g.lineTo(-9, 0); g.lineTo(0, 3.5); g.closePath(); g.fill(); g.stroke(); g.restore(); for (let j = 1; j <= 3; j++) crShape('snow', x - ux * (j * 11 + 6) + Math.sin(t * 9 + j) * 3, y - uy * (j * 11 + 6), 4, c2, 1 - j * .25, t * 3 + j) }
+  else if (f == 'glitch') { const j = (crRnd(Math.floor(t * 20) + (x | 0)) - .5) * 6; g.fillStyle = c1; g.fillRect(x - 3 + j, y - 3, 6, 6); g.fillStyle = c2; g.fillRect(x - 3 - j, y - 3, 6, 6); for (let k = 1; k <= 3; k++) { g.globalAlpha = 1 - k * .25; g.fillStyle = k % 2 ? c1 : c2; g.fillRect(x - ux * k * 9 - 2, y - uy * k * 9 - 2, 4, 4) } g.globalAlpha = 1 }
+  else if (f == 'aurora') { g.lineCap = 'round'; g.lineWidth = 3; g.strokeStyle = crSecC(it, x * .02); g.beginPath(); for (let j = 0; j <= 10; j++) { const d = j * 4, w = Math.sin(j * .7 - t * 18) * 3 * (j / 10); g.lineTo(x - ux * d - uy * w, y - uy * d + ux * w) } g.stroke(); g.fillStyle = c2; g.beginPath(); g.arc(x, y, 3.5, 0, 7); g.fill() }
+  else { g.shadowColor = c1; g.shadowBlur = 12; crShape('star', x, y, 7, c1, 1, t * 5); g.shadowBlur = 0; g.strokeStyle = c2; g.lineWidth = 1.4; g.globalAlpha = .8; g.beginPath(); g.arc(x, y, 9, 0, 7); g.stroke(); g.globalAlpha = 1; for (let j = 1; j <= 3; j++) crShape('star', x - ux * j * 10, y - uy * j * 10, 5 - j, c2, 1 - j * .25, t * 4 + j) }
+}
+function crSecPfx(it, t, dur, u) { // effet de pouvoir (repère centré sur le joueur) : un effet totalement différent par skin
+  const th = CRTH[it.th], f = th[3], c1 = th[1], c2 = th[2]; g.lineCap = 'round';
+  if (f == 'void') { // implosion puis onde de choc
+    for (let i = 0; i < 3; i++) { const uu = Math.max(0, Math.min(1, u * 1.5 - i * .12)); g.globalAlpha = (1 - uu) * .9; g.strokeStyle = i % 2 ? c2 : c1; g.lineWidth = 3; g.beginPath(); g.arc(0, 0, (1 - uu) * (120 + i * 30) + 8, 0, 7); g.stroke() }
+    g.globalAlpha = 1 - u * .5; g.fillStyle = 'rgba(4,0,12,.9)'; g.beginPath(); g.arc(0, 0, Math.sin(Math.min(1, u * 1.2) * Math.PI) * 34, 0, 7); g.fill(); g.strokeStyle = c2; g.lineWidth = 2; g.stroke();
+    if (u > .55) { const v = (u - .55) / .45; g.globalAlpha = 1 - v; g.strokeStyle = c2; g.lineWidth = 5 * (1 - v) + 1; g.beginPath(); g.arc(0, 0, v * 135, 0, 7); g.stroke() }
+  } else if (f == 'sun') { // anneau de feu + 14 flammes projetées
+    g.globalCompositeOperation = 'lighter'; const R0 = 30 + u * 110, gr = g.createRadialGradient(0, 0, 0, 0, 0, R0); gr.addColorStop(0, c2); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.globalAlpha = (1 - u) * .8; g.fillStyle = gr; g.beginPath(); g.arc(0, 0, R0, 0, 7); g.fill(); g.globalCompositeOperation = 'source-over';
+    g.globalAlpha = 1 - u; g.strokeStyle = c1; g.lineWidth = 6 * (1 - u) + 1; g.beginPath(); g.arc(0, 0, 25 + u * 95, 0, 7); g.stroke();
+    for (let i = 0; i < 14; i++) { const a = i * .449, d = 20 + u * 115; crShape('flame', Math.cos(a) * d, Math.sin(a) * d, 15 * (1 - u * .6), i % 2 ? c2 : c1, 1 - u, a + 1.5708) }
+  } else if (f == 'ice') { // anneau de givre + 6 grandes lances de glace + neige
+    g.globalAlpha = 1 - u; g.strokeStyle = c2; g.lineWidth = 4 * (1 - u) + 1; g.beginPath(); g.arc(0, 0, 25 + u * 100, 0, 7); g.stroke();
+    for (let i = 0; i < 6; i++) { g.save(); g.rotate(i * 1.0472 + u * .5); g.globalAlpha = 1 - u * .6; g.fillStyle = c2; g.strokeStyle = c1; g.lineWidth = 1.5; const L = 30 + u * 95; g.beginPath(); g.moveTo(18, 0); g.lineTo(L * .55, -8); g.lineTo(L, 0); g.lineTo(L * .55, 8); g.closePath(); g.fill(); g.stroke(); g.restore() }
+    for (let i = 0; i < 12; i++) { const a = i * .5236 + crRnd(i), d = 30 + u * (60 + crRnd(i + 2) * 60); crShape('snow', Math.cos(a) * d, Math.sin(a) * d + u * 25, 5, c2, 1 - u, t * 3 + i) }
+  } else if (f == 'glitch') { // carrés concentriques décalés RGB + barres parasites
+    const sd = Math.floor(t * 25); for (let i = 0; i < 4; i++) { const z = 16 + u * 85 + i * 16, j = (crRnd(sd + i) - .5) * 9; g.globalAlpha = 1 - u; g.lineWidth = 2.5; g.strokeStyle = c1; g.strokeRect(-z + j, -z, z * 2, z * 2); g.strokeStyle = c2; g.strokeRect(-z - j, -z, z * 2, z * 2) }
+    for (let i = 0; i < 8; i++) { g.globalAlpha = (1 - u) * .8; g.fillStyle = i % 2 ? c1 : c2; g.fillRect((crRnd(sd + i + 3) - .5) * 220, (crRnd(sd + i + 9) - .5) * 160, 30 + crRnd(sd + i) * 60, 3) }
+  } else if (f == 'aurora') { // 3 rubans en spirale ascendante
+    for (let k = 0; k < 3; k++) { g.globalAlpha = 1 - u; g.strokeStyle = crMix(c1, c2, k / 2); g.lineWidth = 5 * (1 - u) + 1; g.beginPath(); for (let j = 0; j <= 30; j++) { const a = j * .3 + t * 3 + k * 2.094, d = 10 + j * 3 * (.4 + u); g.lineTo(Math.cos(a) * d, Math.sin(a) * d * .55 - j * 2.5 * u) } g.stroke() }
+    for (let i = 0; i < 8; i++) crShape('star', Math.sin(t * 3 + i) * 50, -u * (40 + i * 14), 4, i % 2 ? c1 : c2, 1 - u, t * 3)
+  } else { // éclipse : disque noir, couronne de 24 rayons dorés, couronne qui s'élève
+    g.globalAlpha = 1 - u * .6; g.fillStyle = '#05030a'; g.beginPath(); g.arc(0, 0, 22, 0, 7); g.fill(); g.strokeStyle = c1; g.lineWidth = 3; g.stroke();
+    for (let i = 0; i < 24; i++) { const a = i * .2618 + t, d = 28 + u * (70 + (i % 2) * 40); g.globalAlpha = 1 - u; g.strokeStyle = i % 2 ? c2 : c1; g.lineWidth = 2; g.beginPath(); g.moveTo(Math.cos(a) * 28, Math.sin(a) * 28); g.lineTo(Math.cos(a) * d, Math.sin(a) * d); g.stroke() }
+    g.globalAlpha = 1 - u * .5; crCrown(0, -34 - u * 30, 10, c1);
+  }
+}
+function crSecKill(f, c, u, t, e) { // animation de kill (repère centré sur la victime)
+  if (u < .14) { g.globalAlpha = .35 * (1 - u / .14); g.fillStyle = c[2]; g.fillRect(-W, -H, W * 2, H * 2) }
+  g.lineCap = 'round';
+  if (f == 'void') { // aspiration → trou noir → explosion
+    if (u < .45) for (let i = 0; i < 26; i++) { const a = crRnd(i) * 6.283, d = (60 + crRnd(i + 3) * 140) * (1 - u / .45); g.globalAlpha = .9; g.fillStyle = i % 2 ? c[1] : c[2]; g.fillRect(Math.cos(a) * d - 2, Math.sin(a) * d - 2, 4, 4) }
+    const v = u < .45 ? 0 : (u - .45) / .55, rad = u < .45 ? 6 + u / .45 * 28 : 34 * (1 - v); g.globalAlpha = 1; g.fillStyle = 'rgba(4,0,12,.95)'; g.beginPath(); g.arc(0, 0, rad, 0, 7); g.fill(); g.strokeStyle = c[2]; g.lineWidth = 2; g.stroke();
+    if (v > 0) { g.globalAlpha = 1 - v; g.strokeStyle = c[1]; g.lineWidth = 5 * (1 - v) + 1; g.beginPath(); g.arc(0, 0, v * 190, 0, 7); g.stroke(); for (let i = 0; i < 16; i++) { const a = i * .3927 + crRnd(i) * .2, d = v * (80 + crRnd(i + 4) * 130); crShape('star', Math.cos(a) * d, Math.sin(a) * d, 6 * (1 - v), c[2], 1 - v, a) } }
+  } else if (f == 'sun') { // phénix : deux ailes de flammes, pilier de feu, braises
+    for (const q of [-1, 1]) for (let j = 0; j < 7; j++) { const a = -.3 - j * .26, d = (26 + j * 9) * (.5 + e); crShape('flame', q * Math.cos(a) * d, Math.sin(a) * d - u * 70, 12 * (1 - u * .5), j % 2 ? c[2] : c[1], 1 - u, q * (.6 + j * .12)) }
+    for (let i = 0; i < 9; i++) crShape('flame', (i - 4) * 12, -u * 170 - (i % 3) * 22, 17 * (1 - u * .5), i % 2 ? c[2] : c[1], 1 - u, 0);
+    for (let i = 0; i < 22; i++) { g.globalAlpha = 1 - u; g.fillStyle = c[2]; g.beginPath(); g.arc((crRnd(i) - .5) * 120 + Math.sin(t * 4 + i) * 8, -u * (50 + crRnd(i + 3) * 150), 2.2 * (1 - u) + .5, 0, 7); g.fill() }
+  } else if (f == 'ice') { // gel puis éclatement en cristaux
+    if (u < .3) { g.globalAlpha = 1; g.fillStyle = 'rgba(180,240,255,.55)'; g.fillRect(-22, -22, 44, 44); g.strokeStyle = c[2]; g.lineWidth = 3; g.strokeRect(-22, -22, 44, 44); g.lineWidth = 1.5; g.beginPath(); g.moveTo(-22, -22); g.lineTo(22 * (u / .3), 22 * (u / .3)); g.moveTo(22, -22); g.lineTo(-22 * (u / .3), 22 * (u / .3)); g.stroke() }
+    else { const v = (u - .3) / .7; for (let i = 0; i < 16; i++) { const a = i * .3927 + crRnd(i) * .3, d = v * (70 + crRnd(i + 2) * 120); g.save(); g.translate(Math.cos(a) * d, Math.sin(a) * d + v * v * 90); g.rotate(a + t * 4); g.globalAlpha = 1 - v; g.fillStyle = i % 2 ? c[2] : c[1]; g.beginPath(); g.moveTo(0, -13); g.lineTo(5, 0); g.lineTo(0, 13); g.lineTo(-5, 0); g.closePath(); g.fill(); g.restore() }
+      g.globalAlpha = 1 - v; g.strokeStyle = c[2]; g.lineWidth = 3 * (1 - v) + 1; g.beginPath(); g.arc(0, 0, v * 120, 0, 7); g.stroke() }
+    for (let i = 0; i < 14; i++) crShape('snow', (crRnd(i) - .5) * 200, -80 + u * (150 + crRnd(i + 2) * 40), 5, c[2], 1 - u * .7, t * 3 + i)
+  } else if (f == 'glitch') { // corruption : tranches, gros pixels, barres sur tout l'écran
+    const sd = Math.floor(t * 30); for (let i = 0; i < 28; i++) { const sz = 6 + crRnd(i) * 16; g.globalAlpha = 1 - u; g.fillStyle = i % 3 == 0 ? c[1] : i % 3 == 1 ? c[2] : '#fff'; g.fillRect((crRnd(sd + i) - .5) * 260, (crRnd(sd + i + 9) - .5) * 170, sz, sz) }
+    for (let i = 0; i < 4; i++) { g.globalAlpha = (1 - u) * .5; g.fillStyle = i % 2 ? c[1] : c[2]; g.fillRect(-W / 2, (crRnd(sd + i * 3) - .5) * 200, W, 2 + crRnd(sd + i) * 6) }
+    g.globalAlpha = 1 - u; g.strokeStyle = '#fff'; g.lineWidth = 2; const z = 26 * (1 - u); g.strokeRect(-z, -z, z * 2, z * 2);
+  } else if (f == 'aurora') { // 4 rubans en spirale + étoiles qui montent
+    for (let k = 0; k < 4; k++) { g.globalAlpha = 1 - u; g.strokeStyle = crMix(c[1], c[2], k / 3); g.lineWidth = 4 * (1 - u) + 1; g.beginPath(); for (let j = 0; j <= 28; j++) g.lineTo(Math.sin(j * .35 + t * 4 + k * 1.6) * (14 + j * 2.2), -j * 7 * (.4 + u) + 10); g.stroke() }
+    for (let i = 0; i < 18; i++) crShape('star', (crRnd(i) - .5) * 140 + Math.sin(t * 3 + i) * 14, -u * (60 + crRnd(i + 3) * 150), 5 * (1 - u * .5), i % 2 ? c[1] : c[2], 1 - u, t * 3 + i)
+  } else { // éclipse : disque noir, couronne dorée qui explose, rayons, couronne royale
+    g.globalAlpha = 1 - u; g.fillStyle = '#05030a'; g.beginPath(); g.arc(0, 0, 28 * (1 - u * .3), 0, 7); g.fill(); g.strokeStyle = c[1]; g.lineWidth = 6 * (1 - u) + 1; g.beginPath(); g.arc(0, 0, 30 + e * 120, 0, 7); g.stroke();
+    for (let i = 0; i < 24; i++) { const a = i * .2618 + t * .6; g.strokeStyle = i % 2 ? c[2] : c[1]; g.lineWidth = 2; g.beginPath(); g.moveTo(Math.cos(a) * 34, Math.sin(a) * 34); g.lineTo(Math.cos(a) * (34 + e * (60 + (i % 3) * 40)), Math.sin(a) * (34 + e * (60 + (i % 3) * 40))); g.stroke() }
+    g.globalAlpha = 1 - u * .6; crCrown(0, u < .35 ? -140 + Math.pow(u / .35, 2) * 110 : -30 - (u - .35) * 70, 16, c[1]);
+  }
 }
 function crCrown(x, y, z, col) { g.fillStyle = col; g.beginPath(); g.moveTo(x - z, y + z * .6); g.lineTo(x - z, y - z * .3); g.lineTo(x - z * .5, y + z * .1); g.lineTo(x, y - z * .6); g.lineTo(x + z * .5, y + z * .1); g.lineTo(x + z, y - z * .3); g.lineTo(x + z, y + z * .6); g.closePath(); g.fill(); g.fillStyle = '#fff6c4'; g.fillRect(x - z, y + z * .35, z * 2, z * .25) }
 function crWpnFx(s, it) { // arme : liseré lumineux sur le canon (repère tourné)
@@ -208,7 +296,7 @@ function crWpnFx(s, it) { // arme : liseré lumineux sur le canon (repère tourn
   g.strokeStyle = th[2]; g.lineWidth = 1.4; g.beginPath(); g.moveTo(r + 4, 0); g.lineTo(x1, 0); g.stroke();
   if (k >= 1) { g.fillStyle = th[2]; g.globalAlpha = g.globalAlpha * (.4 + .4 * Math.sin(t * 6)); g.beginPath(); g.arc(x1, 0, 3 + k, 0, 7); g.fill() }
   if (k >= 2) { g.globalAlpha = 1; g.fillStyle = '#fff'; g.beginPath(); g.arc(r + 4 + ((t * 1.5) % 1) * (L - 4), 0, 1.8, 0, 7); g.fill() }
-  if (k >= 5) { g.globalAlpha = 1; g.fillStyle = th[1]; g.beginPath(); g.arc(r + 4 + (((t * 1.5) + .5) % 1) * (L - 4), 0, 2.2, 0, 7); g.fill() }
+  if (k >= 5) crSecMuz(it, x1);
   if (k >= 3) { g.translate(x1, 0); crParts(th[3], th, r * .5, t, 4) }
   g.restore();
 }
@@ -217,6 +305,7 @@ function crWpnFx(s, it) { // arme : liseré lumineux sur le canon (repère tourn
 function crOwnerItem(own, t) { if (own === myPeer || own === 'me') return crGet(crCx(), t); const o = R[own]; return o ? crGet(o.cx, t) : null }
 function crBulAt(it, x, y, vx, vy) {
   const th = CRTH[it.th], k = it.r, t = tt, l = Math.hypot(vx, vy) || 1, ux = vx / l, uy = vy / l; g.save(); g.lineCap = 'round';
+  if (k == 5) { crSecBul(it, x, y, ux, uy); g.restore(); return }
   const col = it.th == 13 ? 'hsl(' + ((t * 300) % 360) + ',100%,65%)' : it.r == 5 ? crSecC(it, x * .02) : th[1];
   if (k >= 1) { g.strokeStyle = col; g.globalAlpha = .5; g.lineWidth = 2 + k; g.beginPath(); g.moveTo(x, y); g.lineTo(x - ux * (10 + k * 7), y - uy * (10 + k * 7)); g.stroke(); g.globalAlpha = 1 }
   if (k >= 2) { g.shadowColor = th[1]; g.shadowBlur = 10 }
@@ -230,6 +319,7 @@ function crBul(b) { if (b.gr || b.rk || b.lz || b.gd || b.sn) return 0; const it
 // ---------- Effets de pouvoir ----------
 function crPfx(it, x, y, t, dur) {
   const th = CRTH[it.th], u = Math.min(1, t / dur), k = it.r; g.save(); g.translate(x, y);
+  if (k == 5) { crSecPfx(it, t, dur, u); g.restore(); return }
   const rc = i => it.th == 13 ? 'hsl(' + ((t * 260 + i * 80) % 360) + ',100%,65%)' : it.r == 5 ? crSecC(it, i) : i % 2 ? th[2] : th[1];
   const nR = k == 0 ? 1 : k < 3 ? 2 : 3;
   for (let i = 0; i < nR; i++) { const uu = Math.max(0, u - i * .12); g.globalAlpha = (1 - uu) * .9; g.strokeStyle = rc(i); g.lineWidth = (k >= 2 ? 5 : 3) * (1 - uu) + 1; g.beginPath(); g.arc(0, 0, 22 + uu * (60 + k * 12), 0, 7); g.stroke() }
@@ -239,11 +329,6 @@ function crPfx(it, x, y, t, dur) {
   if (k == 4) {
     if (it.th == 12) { const gr = g.createLinearGradient(0, -150, 0, 10); gr.addColorStop(0, 'rgba(255,230,120,0)'); gr.addColorStop(1, 'rgba(255,230,120,.7)'); g.globalAlpha = 1 - u; g.fillStyle = gr; g.fillRect(-18, -150, 36, 160); g.globalAlpha = 1 - u * .5; crCrown(0, -34 - u * 26, 10, '#ffd24a') }
     else for (let i = 0; i < 12; i++) { const a = i * .5236 + t * 2, d = 20 + u * 90; g.globalAlpha = 1 - u; g.strokeStyle = 'hsl(' + ((t * 300 + i * 30) % 360) + ',100%,65%)'; g.lineWidth = 2; g.beginPath(); g.moveTo(Math.cos(a) * d * .4, Math.sin(a) * d * .4); g.lineTo(Math.cos(a) * d, Math.sin(a) * d); g.stroke() }
-  }
-  if (k == 5) { // signature secrète : flash lumineux + 16 rayons + pilier de lumière
-    const R0 = 40 + u * 120, gr = g.createRadialGradient(0, 0, 0, 0, 0, R0); gr.addColorStop(0, th[2]); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.globalCompositeOperation = 'lighter'; g.globalAlpha = (1 - u) * .8; g.fillStyle = gr; g.beginPath(); g.arc(0, 0, R0, 0, 7); g.fill(); g.globalCompositeOperation = 'source-over';
-    for (let i = 0; i < 16; i++) { const a = i * .3927 + t * 3, d = 20 + u * (110 + (i % 3) * 25); g.globalAlpha = 1 - u; g.strokeStyle = crSecC(it, i); g.lineWidth = 2.5 * (1 - u) + .5; g.beginPath(); g.moveTo(Math.cos(a) * d * .35, Math.sin(a) * d * .35); g.lineTo(Math.cos(a) * d, Math.sin(a) * d); g.stroke() }
-    const gl = g.createLinearGradient(0, -170, 0, 10); gl.addColorStop(0, 'rgba(255,255,255,0)'); gl.addColorStop(1, th[1]); g.globalAlpha = (1 - u) * .55; g.fillStyle = gl; g.fillRect(-14, -170, 28, 180);
   }
   g.restore();
 }
@@ -287,20 +372,7 @@ function crKfx(k, x, y, t, th) {
     for (let i = 0; i < 4; i++) { const r = u * (140 + i * 40) - i * 10; if (r > 0) { g.globalAlpha = 1 - u; g.strokeStyle = 'hsl(' + ((t * 300 + i * 70) % 360) + ',100%,65%)'; g.lineWidth = 4 * (1 - u) + 1; g.beginPath(); g.arc(0, 0, r, 0, 7); g.stroke() } }
     for (let i = 0; i < 18; i++) { const a = i * .349 + t; g.globalAlpha = 1 - u; g.strokeStyle = 'hsl(' + ((i * 20 + t * 200) % 360) + ',100%,70%)'; g.lineWidth = 2; g.beginPath(); g.moveTo(Math.cos(a) * u * 60, Math.sin(a) * u * 60); g.lineTo(Math.cos(a) * u * 190, Math.sin(a) * u * 190); g.stroke() }
   }
-  else if (k == 'sec') { // kill secret : flash, noyau, ondes de choc, éclats thématiques + signature du skin
-    const c = CRTH[th] && th >= 14 ? CRTH[th] : CRTH[14], f = c[3], e = 1 - (1 - u) * (1 - u);
-    if (u < .18) { g.globalAlpha = .35 * (1 - u / .18); g.fillStyle = c[2]; g.fillRect(-W, -H, W * 2, H * 2) }
-    { const R0 = 30 + e * 90, gr = g.createRadialGradient(0, 0, 0, 0, 0, R0); gr.addColorStop(0, c[2]); gr.addColorStop(.5, c[1]); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.save(); g.globalCompositeOperation = 'lighter'; g.globalAlpha = (1 - u) * .9; g.fillStyle = gr; g.beginPath(); g.arc(0, 0, R0, 0, 7); g.fill(); g.restore() }
-    for (let i = 0; i < 4; i++) { const r = e * (150 + i * 55) - i * 14; if (r > 0) { g.globalAlpha = 1 - u; g.strokeStyle = i % 2 ? c[2] : c[1]; g.lineWidth = 5 * (1 - u) + 1; g.beginPath(); g.arc(0, 0, r, 0, 7); g.stroke() } }
-    for (let i = 0; i < 22; i++) { const a = i * .2856 + crRnd(i) * .3, d = e * (60 + crRnd(i + 4) * 170); crShape(f, Math.cos(a) * d, Math.sin(a) * d - e * 30 * crRnd(i + 8), 7 * (1 - u * .6), i % 2 ? c[2] : c[1], 1 - u, t * 4 + i) }
-    g.globalAlpha = 1;
-    if (f == 'void') { if (u < .35) { g.globalAlpha = .9; g.strokeStyle = c[1]; g.lineWidth = 3; g.beginPath(); g.arc(0, 0, (1 - u / .35) * 140, 0, 7); g.stroke() } g.globalAlpha = Math.min(1, (1 - u) * 1.6); g.fillStyle = 'rgba(5,0,14,.92)'; g.beginPath(); g.arc(0, 0, 34 * Math.sin(Math.min(1, u * 1.3) * Math.PI), 0, 7); g.fill(); g.strokeStyle = c[2]; g.lineWidth = 2; g.stroke() }
-    else if (f == 'sun') { for (let i = 0; i < 9; i++) crShape('flame', (i - 4) * 14, -u * 170 - (i % 3) * 22, 18 * (1 - u * .5), i % 2 ? '#ffe27a' : '#ff5a14', 1 - u, 0) }
-    else if (f == 'ice') { for (let i = 0; i < 8; i++) { const a = i * .785, d = e * 130; g.save(); g.translate(Math.cos(a) * d, Math.sin(a) * d); g.rotate(a + t * 4); g.globalAlpha = 1 - u; g.fillStyle = c[2]; g.beginPath(); g.moveTo(0, -13); g.lineTo(5, 0); g.lineTo(0, 13); g.lineTo(-5, 0); g.closePath(); g.fill(); g.restore() } }
-    else if (f == 'glitch') { for (let i = 0; i < 10; i++) { const sd = Math.floor(t * 25) + i; g.globalAlpha = 1 - u; g.fillStyle = i % 2 ? c[1] : c[2]; g.fillRect((crRnd(sd) - .5) * 240, (crRnd(sd + 3) - .5) * 160, 40 + crRnd(sd + 5) * 80, 3 + crRnd(sd + 7) * 5) } }
-    else if (f == 'aurora') { g.lineCap = 'round'; for (let k2 = 0; k2 < 3; k2++) { g.globalAlpha = 1 - u; g.strokeStyle = crMix(c[1], c[2], k2 / 2); g.lineWidth = 4 * (1 - u) + 1; g.beginPath(); for (let j = 0; j <= 24; j++) g.lineTo(Math.sin(j * .35 + t * 4 + k2 * 2) * (14 + j * 1.8), -j * 7 * (.4 + u)); g.stroke() } }
-    else { g.globalAlpha = 1 - u; g.fillStyle = '#05030a'; g.beginPath(); g.arc(0, 0, 26 * (1 - u * .4), 0, 7); g.fill(); g.strokeStyle = c[1]; g.lineWidth = 3; g.stroke(); for (let i = 0; i < 20; i++) { const a = i * .314 + t; g.strokeStyle = c[2]; g.lineWidth = 2; g.beginPath(); g.moveTo(Math.cos(a) * 30, Math.sin(a) * 30); g.lineTo(Math.cos(a) * (30 + 30 + u * 120), Math.sin(a) * (30 + 30 + u * 120)); g.stroke() } }
-  }
+  else if (k == 'sec') crSecKill((CRTH[th] && th >= 14 ? CRTH[th] : CRTH[14])[3], CRTH[th] && th >= 14 ? CRTH[th] : CRTH[14], u, t, 1 - (1 - u) * (1 - u));
   g.restore();
 }
 function crKillAt(by, x, y) {
