@@ -444,7 +444,7 @@ wss.on('connection', (ws, req) => {
     } else if (m.t === 'lb_get') {
       const list = Object.values(LB).sort((a, b) => b.s - a.s || a.t - b.t).slice(0, 10).map((e) => ({ n: e.name, r: e.s, b: e.s }));
       ws.send(JSON.stringify({ t: 'lb', list }));
-    } else if (['shot', 'kill', 'dep', 'act', 'flash', 'plate', 'orb', 'rm', 'melee', 'pw', 'pfx', 'sm'].includes(m.t)) {
+    } else if (['shot', 'kill', 'dep', 'act', 'flash', 'plate', 'orb', 'rm', 'melee', 'pw', 'pfx', 'sm', 'ecl'].includes(m.t)) {
       if (me.lobby < 0) return;
       if (m.d && m.d.gd && !me.admin) m.d.gd = 0; // le laser géant est réservé à l'admin
       if (Date.now() - me.since > 1000) { me.since = Date.now(); me.shots = 0; }
