@@ -76,8 +76,8 @@ const SLR = 230, BSPD = 115, BREACH = 190, TSPD = 130;
 let evOn = 0, respawnAt = 0; // respawnAt : réapparition automatique du boss 10 min après sa mort
 const RESPAWN_MS = Number(process.env.RESPAWN_MS) || 10 * 60 * 1000;
 // Registre des boss : pour en ajouter un, déclare-le ici (PV + fonction tick) puis dans BOSSL de public/game.js
-const BOSSES = { magma: { hp0: 6000, hpN: 2500, tick: tickMagma }, tong: { hp0: 6000, hpN: 2500, tick: tickTong }, necro: { hp0: 6000, hpN: 2500, tick: tickNecro } };
-const boss = { bt: 'magma', al: 0, x: 800, y: 600, a: 0, hp: 0, mh: 1, st: 0, tm: 0, dur: 1, mtcd: 6, tpcd: 6, en: 0, su: 6, ar: 0 };
+const BOSSES = { magma: { hp0: 6000, hpN: 2500, tick: tickMagma }, tong: { hp0: 6000, hpN: 2500, tick: tickTong }, necro: { hp0: 6000, hpN: 2500, tick: tickNecro }, dragon: { hp0: 9000, hpN: 3500, tick: tickDragon } };
+const boss = { bt: 'magma', al: 0, x: 800, y: 600, a: 0, hp: 0, mh: 1, st: 0, tm: 0, dur: 1, mtcd: 6, tpcd: 6, en: 0, su: 6, ar: 0, brcd: 5, dvcd: 14 };
 // Nécro-Sire : sbires invoqués (simulés ici) et arène qui rétrécit (rayon boss.ar autour de ARC_X/ARC_Y)
 const ARC_X = 800, ARC_Y = 600, AR0 = 540, AR1 = 175, AR_T = 45, MINHP = 55, MINSPD = 105, MINMAX = 12, MINR = 16;
 const mins = []; let minId = 0;
@@ -85,7 +85,7 @@ const clampB = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 function spawnBoss(type) {
   if (BOSSES[type]) boss.bt = type;
   const B = BOSSES[boss.bt], n = Math.max(1, inLobby(EV).length);
-  Object.assign(boss, { ctl: null, ci: null, al: 1, x: 800, y: 600, a: 0, mh: B.hp0 + B.hpN * n, st: 0, tm: 0, dur: 1, mtcd: 6, tpcd: 6, en: 0, su: 6, ar: 0 });
+  Object.assign(boss, { ctl: null, ci: null, al: 1, x: 800, y: 600, a: 0, mh: B.hp0 + B.hpN * n, st: 0, tm: 0, dur: 1, mtcd: 6, tpcd: 6, en: 0, su: 6, ar: 0, brcd: 5, dvcd: 14, dx: 800, dy: 600 });
   mins.length = 0;
   boss.hp = boss.mh;
   respawnAt = 0;
@@ -143,7 +143,8 @@ function stepMins(dt, alive, fin) {
 function tickCtl(dt, alive) {
   const t = boss.bt, c = boss.ci || (boss.ci = { dx: 0, dy: 0, a: boss.a, k: 0 });
   const en = t !== 'tong' && boss.hp < boss.mh * 0.5, fin = t === 'necro' && boss.hp < boss.mh * 0.35;
-  boss.en = en ? 1 : 0;
+  boss.en = t === 'dragon' ? (boss.hp < boss.mh * 0.25 ? 2 : en ? 1 : 0) : (en ? 1 : 0);
+  if (t === 'dragon') { boss.brcd -= dt; boss.mtcd -= dt; }
   if (t === 'necro') { boss.ar = fin ? Math.max(AR1, (boss.ar || AR0) - (AR0 - AR1) / AR_T * dt) : 0; stepMins(dt, alive, fin); }
   boss.tm += dt; boss.mtcd -= dt; boss.tpcd -= dt; boss.su -= dt;
   const k = c.k; c.k = 0;
@@ -156,7 +157,15 @@ function tickCtl(dt, alive) {
     }
     if (k === 1) { boss.st = 1; boss.tm = 0; boss.dur = t === 'tong' ? 0.8 : (en ? 0.75 : 1); }
     else if (k === 2) {
-      if (t === 'magma' && boss.mtcd <= 0) { // pluie de météores : un impact par joueur vivant + des impacts au hasard
+      if (t === 'dragon') {
+        if (boss.brcd <= 0) { boss.st = 5; boss.tm = 0; boss.dur = 1.1; boss.brcd = boss.en ? 4 : 6; sendBoss(); }
+        else if (boss.mtcd <= 0) {
+          boss.st = 4; boss.tm = 0; boss.dur = 1.3; boss.mtcd = 10;
+          const pts = [], n = Math.min(12, alive.length + 4);
+          for (let i = 0; i < n; i++) { const v = alive.length ? alive[i % alive.length] : boss, rnd = !alive.length || i >= alive.length; pts.push([Math.round(clampB(v.x + (rnd ? (Math.random() - 0.5) * 300 : 0), 60, 1540)), Math.round(clampB(v.y + (rnd ? (Math.random() - 0.5) * 300 : 0), 60, 1140))]); }
+          lobbyCast(EV, 'bmeteor', { p: pts }); sendBoss();
+        }
+      } else if (t === 'magma' && boss.mtcd <= 0) { // pluie de météores : un impact par joueur vivant + des impacts au hasard
         boss.st = 4; boss.tm = 0; boss.dur = 1.3; boss.mtcd = en ? 6 : 9;
         const pts = [], n = Math.min(12, alive.length + (en ? 5 : 3));
         for (let i = 0; i < n; i++) {
@@ -179,7 +188,9 @@ function tickCtl(dt, alive) {
         sendBoss();
       }
     }
-  } else if (boss.st === 1) { // préparation du coup : la zone annoncée est visible
+  } else if (t === 'dragon' && boss.st === 5) { boss.a = c.a; if (boss.tm >= boss.dur) { boss.st = 6; boss.tm = 0; boss.dur = 2.2; sendBoss(); } }
+  else if (t === 'dragon' && boss.st === 6) { boss.a = c.a; if (boss.tm >= boss.dur) { boss.st = 3; boss.tm = 0; boss.dur = 1; sendBoss(); } }
+  else if (boss.st === 1) { // préparation du coup : la zone annoncée est visible
     boss.a = c.a;
     if (boss.tm >= boss.dur) {
       boss.st = 2; boss.tm = 0; boss.dur = t === 'tong' ? 0.22 : 0.25;
@@ -325,6 +336,46 @@ function tickNecro(dt, alive, tg, bd) {
   }
 }
 
+// Pyrax le Dragon : coup de queue (zone annoncée), souffle de feu en cône (annoncé puis 2,2 s), pluie de météores,
+// plongeon (invulnérable en vol, impact de zone) ; rage < 50 % PV, fureur < 25 % PV (souffle à 3 cônes).
+// États : 0 libre · 1 queue (préparation) · 2 impact · 3 récupération · 4 rugissement/météores · 5 souffle (préparation) · 6 souffle · 7 envol + plongeon
+function tickDragon(dt, alive, tg, bd) {
+  const en = boss.hp < boss.mh * 0.5 ? (boss.hp < boss.mh * 0.25 ? 2 : 1) : 0;
+  boss.en = en;
+  const turn = (rate) => {
+    if (!tg) return;
+    const want = Math.atan2(tg.y - boss.y, tg.x - boss.x);
+    const df = ((want - boss.a + 3 * Math.PI) % (2 * Math.PI)) - Math.PI, m = rate * dt;
+    boss.a += Math.max(-m, Math.min(m, df));
+  };
+  boss.tm += dt; boss.brcd -= dt; boss.mtcd -= dt; boss.dvcd -= dt;
+  if (boss.st === 0) {
+    turn(2);
+    if (!tg) return;
+    if (boss.brcd <= 0 && bd > 150) { boss.st = 5; boss.tm = 0; boss.dur = en ? 0.9 : 1.1; boss.brcd = en ? 4.5 : 7; sendBoss(); return; }
+    if (boss.mtcd <= 0) {
+      boss.st = 4; boss.tm = 0; boss.dur = 1.3; boss.mtcd = en ? 9 : 14;
+      const pts = [], n = Math.min(14, alive.length + (en ? 6 : 3));
+      for (let i = 0; i < n; i++) { const v = alive[i % alive.length], rnd = i >= alive.length; pts.push([Math.round(clampB(v.x + (rnd ? (Math.random() - 0.5) * 320 : 0), 60, 1540)), Math.round(clampB(v.y + (rnd ? (Math.random() - 0.5) * 320 : 0), 60, 1140))]); }
+      lobbyCast(EV, 'bmeteor', { p: pts }); sendBoss(); return;
+    }
+    if (en && boss.dvcd <= 0) { boss.st = 7; boss.tm = 0; boss.dur = 2.1; boss.dvcd = en > 1 ? 11 : 16; boss.dx = tg.x; boss.dy = tg.y; sendBoss(); return; }
+    if (bd > SLR * 0.6) { boss.x += Math.cos(boss.a) * BSPD * (en ? 0.95 : 0.7) * dt; boss.y += Math.sin(boss.a) * BSPD * (en ? 0.95 : 0.7) * dt; }
+    if (bd < SLR - 50) { boss.st = 1; boss.tm = 0; boss.dur = en ? 0.7 : 0.9; }
+  } else if (boss.st === 1) { turn(1.2); if (boss.tm >= boss.dur) { boss.st = 2; boss.tm = 0; boss.dur = 0.25; lobbyCast(EV, 'bswing', { x: Math.round(boss.x), y: Math.round(boss.y), a: +boss.a.toFixed(2) }); } }
+  else if (boss.st === 2) { if (boss.tm >= boss.dur) { boss.st = 3; boss.tm = 0; boss.dur = 0.8; } }
+  else if (boss.st === 3) { if (boss.tm >= boss.dur) { boss.st = 0; boss.tm = 0; boss.dur = 1; } }
+  else if (boss.st === 4) { turn(1); if (boss.tm >= boss.dur) { boss.st = 0; boss.tm = 0; boss.dur = 1; sendBoss(); } }
+  else if (boss.st === 5) { turn(2.4); if (boss.tm >= boss.dur) { boss.st = 6; boss.tm = 0; boss.dur = 2.2; sendBoss(); } }
+  else if (boss.st === 6) { turn(en ? 0.75 : 0.55); if (boss.tm >= boss.dur) { boss.st = 3; boss.tm = 0; boss.dur = 1.1; sendBoss(); } }
+  else if (boss.st === 7) { // en l'air : suit sa cible 1,5 s puis se fige et retombe
+    if (tg && boss.tm < 1.5) { boss.dx = tg.x; boss.dy = tg.y; }
+    const ex = boss.dx - boss.x, ey = boss.dy - boss.y, d = Math.hypot(ex, ey), sp = (boss.tm < 1.5 ? 420 : 0) * dt;
+    if (d > 1) { boss.x += ex / d * Math.min(sp, d); boss.y += ey / d * Math.min(sp, d); boss.a = Math.atan2(ey, ex); }
+    if (boss.tm >= boss.dur) { boss.st = 2; boss.tm = 0; boss.dur = 0.3; boss.mtcd = Math.max(boss.mtcd, 3); lobbyCast(EV, 'bswing', { x: Math.round(boss.x), y: Math.round(boss.y), a: +boss.a.toFixed(2) }); }
+  }
+}
+
 wss.on('connection', (ws, req) => {
   req.socket.setNoDelay(true);
   const id = 'p' + (++counter).toString(36);
@@ -383,7 +434,7 @@ wss.on('connection', (ws, req) => {
       if (me.lobby === EV && boss.al && m.d) {
         const t = Date.now();
         if (t - (me.bdT || 0) > 1000) { me.bdT = t; me.bdN = 0; }
-        if (++me.bdN <= 20) { boss.hp -= Math.max(0, Math.min(360, num(m.d.d))); if (boss.hp <= 0) killBoss(); }
+        if (++me.bdN <= 20 && !(boss.bt === 'dragon' && boss.st === 7)) { boss.hp -= Math.max(0, Math.min(360, num(m.d.d))); if (boss.hp <= 0) killBoss(); }
       }
     } else if (m.t === 'md') { // dégâts infligés à un sbire de Nécro-Sire (lots envoyés par les clients)
       if (me.lobby === EV && boss.al && boss.bt === 'necro' && m.d) {
