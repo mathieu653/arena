@@ -7,7 +7,7 @@ const crypto = require('crypto');
 const DATA = process.env.DATA_DIR || path.join(__dirname, 'data');
 try { fs.mkdirSync(DATA, { recursive: true }); } catch {}
 const PUB = path.join(__dirname, 'public');
-const MIME = { '.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript' };
+const MIME = { '.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript', '.txt': 'text/plain' };
 
 const server = http.createServer((req, res) => {
   const url = req.url.split('?')[0];
