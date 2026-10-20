@@ -73,8 +73,12 @@ const lobbyCast = (l, t, d, except) => { const out = JSON.stringify({ t, d }); f
 // ---------- Boss (événement spécial) ----------
 // Constantes à garder identiques à celles de public/game.js
 const SLR = 230, BSPD = 115, BREACH = 190, TSPD = 130;
-let evOn = 0, respawnAt = 0; // respawnAt : réapparition automatique du boss 10 min après sa mort
-const RESPAWN_MS = Number(process.env.RESPAWN_MS) || 10 * 60 * 1000;
+// Le salon événement est toujours ouvert (evOn = 1). Un boss aléatoire apparaît toutes les 30 min (BOSS_EVERY_MS),
+// sauf si le boss précédent est encore en vie : dans ce cas on saute ce tour. respawnAt = prochain passage prévu.
+let evOn = 1;
+const BOSS_EVERY_MS = Number(process.env.BOSS_EVERY_MS) || 30 * 60 * 1000;
+let respawnAt = Date.now() + BOSS_EVERY_MS;
+const randomBoss = () => { const k = Object.keys(BOSSES); return k[Math.floor(Math.random() * k.length)]; };
 // Registre des boss : pour en ajouter un, déclare-le ici (PV + fonction tick) puis dans BOSSL de public/game.js
 const BOSSES = { magma: { hp0: 6000, hpN: 2500, tick: tickMagma }, tong: { hp0: 6000, hpN: 2500, tick: tickTong }, necro: { hp0: 6000, hpN: 2500, tick: tickNecro }, dragon: { hp0: 9000, hpN: 3500, tick: tickDragon } };
 const boss = { bt: 'magma', al: 0, x: 800, y: 600, a: 0, hp: 0, mh: 1, st: 0, tm: 0, dur: 1, mtcd: 6, tpcd: 6, en: 0, su: 6, ar: 0, brcd: 5, dvcd: 14 };
@@ -88,12 +92,11 @@ function spawnBoss(type) {
   Object.assign(boss, { ctl: null, ci: null, al: 1, x: 800, y: 600, a: 0, mh: B.hp0 + B.hpN * n, st: 0, tm: 0, dur: 1, mtcd: 6, tpcd: 6, en: 0, su: 6, ar: 0, brcd: 5, dvcd: 14, dx: 800, dy: 600 });
   mins.length = 0;
   boss.hp = boss.mh;
-  respawnAt = 0;
   const ann = JSON.stringify({ t: 'ann', d: { b: boss.bt } }); // petit message arc-en-ciel pour tous les modes
   for (const p of players.values()) send(p.ws, ann);
 }
 function killBoss() {
-  boss.al = 0; boss.ctl = null; boss.hp = 0; mins.length = 0; respawnAt = Date.now() + RESPAWN_MS; cntDirty = true;
+  boss.al = 0; boss.ctl = null; boss.hp = 0; mins.length = 0; cntDirty = true;
   lobbyCast(EV, 'bossdead', { b: boss.bt });
   sendBoss();
 }
@@ -452,9 +455,8 @@ wss.on('connection', (ws, req) => {
         }
       }
     } else if (m.t === 'ev' && me.admin) { // activer / désactiver l'événement spécial
-      evOn = m.d && m.d.on ? 1 : 0;
-      if (evOn && !boss.al) spawnBoss();
-      if (!evOn && boss.al) { boss.al = 0; boss.ctl = null; sendBoss(); }
+      evOn = 1; // l'événement reste ouvert en permanence (le bouton ne peut plus le fermer)
+      if (!boss.al) spawnBoss(randomBoss());
       cntDirty = true;
     } else if (m.t === 'evkill' && me.admin) { // tuer le boss (test des récompenses)
       if (boss.al) killBoss();
@@ -529,7 +531,7 @@ setInterval(() => {
 let lastB = Date.now(), bt = 0;
 setInterval(() => {
   const now = Date.now(), dt = Math.min(0.1, (now - lastB) / 1000); lastB = now;
-  if (!boss.al && evOn && respawnAt && now >= respawnAt) { spawnBoss(); cntDirty = true; }
+  if (evOn && now >= respawnAt) { respawnAt = now + BOSS_EVERY_MS; if (!boss.al) { spawnBoss(randomBoss()); cntDirty = true; } }
   if (!inLobby(EV).length) return;
   tickBoss(dt);
   if (++bt % 2 === 0) sendBoss();
