@@ -860,7 +860,9 @@ const fmtV=(m,v)=>m==0?v+' kill'+(v>1?'s':''):m==2?v.toLocaleString('fr-FR')+' d
 function rrect(x,y,w,h,r){g.beginPath();g.moveTo(x+r,y);g.arcTo(x+w,y,x+w,y+h,r);g.arcTo(x+w,y+h,x,y+h,r);g.arcTo(x,y+h,x,y,r);g.arcTo(x,y,x+w,y,r);g.closePath()}
 const MD=[{n:'Classique',d:'Parties libres, sans classement',c:'#7ad0ff',ic:'⚔️'},{n:'Classé',d:'Gagne des RR : 3 stades par rang, de Bronze I à Radiant',c:'#ffd98a',ic:'🏅'},{n:'Événement spécial',d:"Toute l'équipe contre un boss géant",c:'#ff8ad8',ic:'👹'},{n:'Survivant',d:'Grande map : caisses, armes, vagues',c:'#8affb0',ic:'🌲'},{n:'Histoire',d:'Campagne solo en 6 chapitres',c:'#ffb38a',ic:'📖'}];
 const fitT=(t,w)=>{if(g.measureText(t).width<=w)return t;while(t.length>1&&g.measureText(t+'…').width>w)t=t.slice(0,-1);return t+'…'};
-function lbPoll(){if(tt-lbT>10){lbT=tt;net.send('lb_get');net.send('lbm_get');postLB()}}
+// Re-poste ses records au serveur : si le classement a été effacé (redéploiement, disque non persistant), il se reconstruit tout seul. Le serveur ignore tout ce qui n'améliore pas l'existant.
+function postBests(){const b=[SV.b0|0,0,SV.b2|0,Math.max(SV.b3|0,SV.sbest|0),SV.b4|0];for(const m of [0,2,3,4])if(b[m]>0)net.send('lbm_post',{uid:SV.uid,name:SV.name,m,v:b[m]})}
+function lbPoll(){if(tt-lbT>10){lbT=tt;net.send('lb_get');net.send('lbm_get');postLB();postBests()}}
 function drawMenu(){g.setTransform(1,0,0,1,0,0);const bg=g.createLinearGradient(0,0,W,H);bg.addColorStop(0,'#05070b');bg.addColorStop(.5,'#0d1322');bg.addColorStop(1,'#140d22');g.fillStyle=bg;g.fillRect(0,0,W,H);
 let gl=g.createRadialGradient(W/2,40,10,W/2,40,430);gl.addColorStop(0,'rgba(122,208,255,.18)');gl.addColorStop(1,'rgba(122,208,255,0)');g.fillStyle=gl;g.fillRect(0,0,W,320);
 gl=g.createRadialGradient(W-60,H,10,W-60,H,380);gl.addColorStop(0,'rgba(179,107,255,.14)');gl.addColorStop(1,'rgba(179,107,255,0)');g.fillStyle=gl;g.fillRect(0,H-380,W,380);

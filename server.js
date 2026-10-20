@@ -29,20 +29,32 @@ const EV = 2;
 
 // Classement (top 10, tous rangs confondus) : score = (rang*3 + stade)*100 + RR (Radiant = 2200 + RR, sans stade). En mémoire + leaderboard.json
 // (sur l'offre gratuite de Render, le disque est effacé à chaque redéploiement)
+// Écriture atomique (fichier temporaire puis renommage) : un crash ou un redéploiement en pleine écriture ne corrompt jamais le classement
+function writeJSON(file, obj) { const tmp = file + '.tmp'; fs.writeFileSync(tmp, JSON.stringify(obj)); fs.renameSync(tmp, file); }
+// Lecture sûre : si le fichier est illisible, on le met de côté (.corrupt) au lieu de le perdre, puis on repart du dernier backup
+function readJSON(file, fallback) {
+  for (const f of [file, file + '.bak']) {
+    try { return JSON.parse(fs.readFileSync(f, 'utf8')); } catch (e) { if (e.code !== 'ENOENT' && f === file) { try { fs.renameSync(file, file + '.corrupt'); } catch {} } }
+  }
+  return fallback;
+}
+// Sauvegarde : écrit le fichier puis garde une copie .bak de la version précédente
+function saveJSON(file, obj) { try { if (fs.existsSync(file)) fs.copyFileSync(file, file + '.bak'); } catch {} writeJSON(file, obj); }
 const LBFILE = path.join(DATA, 'leaderboard.json');
 let LB = {}, lbDirty = false;
-try { LB = JSON.parse(fs.readFileSync(LBFILE, 'utf8')); } catch {}
+LB = readJSON(LBFILE, {});
 for (const u in LB) { const e = LB[u]; if (e && !e.v) { e.s = 700 + Math.max(0, num(e.best || e.rr)); e.v = 2; delete e.best; delete e.rr; lbDirty = true; } } // ancien format : Radiant uniquement
 for (const u in LB) { const e = LB[u]; if (e && e.v === 2) { const o = num(e.s), r = Math.floor(o / 100); e.s = r >= 7 ? 2200 + (o - 700) : r * 300 + (o % 100); e.v = 3; lbDirty = true; } } // v2 -> v3 : 3 stades par rang
+if (lbDirty) { try { saveJSON(LBFILE, LB); lbDirty = false; } catch {} }
 // Classements par mode : 0 = kills (classique), 2 = dégâts boss (événement), 3 = vagues (survivant), 4 = temps histoire (s, plus bas = mieux)
 const LBM_FILE = path.join(DATA, 'leaderboard_modes.json');
 let LBM = { 0: {}, 2: {}, 3: {}, 4: {} };
-try { const o = JSON.parse(fs.readFileSync(LBM_FILE, 'utf8')); for (const k in LBM) if (o[k]) LBM[k] = o[k]; } catch {}
+{ const o = readJSON(LBM_FILE, {}); for (const k in LBM) if (o[k]) LBM[k] = o[k]; }
 let lbmDirty = false;
 const LBM_MAX = { 0: 300, 2: 5e7, 3: 9999, 4: 864000 };
 const lbmList = (k) => Object.values(LBM[k]).sort((a, b) => (k == 4 ? a.v - b.v : b.v - a.v) || a.t - b.t).slice(0, 10).map((e) => ({ n: e.name, v: e.v }));
-setInterval(() => { if (lbmDirty) { lbmDirty = false; try { fs.writeFileSync(LBM_FILE, JSON.stringify(LBM)); } catch {} } }, 30000);
-setInterval(() => { if (lbDirty) { lbDirty = false; try { fs.writeFileSync(LBFILE, JSON.stringify(LB)); } catch {} } }, 30000);
+setInterval(() => { if (lbmDirty) { lbmDirty = false; try { saveJSON(LBM_FILE, LBM); } catch (e) { console.error('lbm:', e.message); lbmDirty = true; } } }, 10000);
+setInterval(() => { if (lbDirty) { lbDirty = false; try { saveJSON(LBFILE, LB); } catch (e) { console.error('lb:', e.message); lbDirty = true; } } }, 10000);
 
 
 // ---------- Comptes : pseudo + mot de passe, la sauvegarde du joueur est stockée sur le serveur ----------
@@ -510,10 +522,12 @@ wss.on('connection', (ws, req) => {
       }
     } else if (m.t === 'lbm_post' && m.d) {
       const uid = String(m.d.uid || '').slice(0, 24).replace(/[^\w-]/g, ''), k = m.d.m | 0, v = Math.round(num(m.d.v));
-      if (uid && LBM[k] && v > 0 && v <= LBM_MAX[k] && !(k == 4 && v < 60) && Date.now() - (me.lbmT || 0) > 1500) {
-        me.lbmT = Date.now();
+      if (uid && LBM[k] && v > 0 && v <= LBM_MAX[k] && !(k == 4 && v < 60) && Date.now() - ((me.lbmT || {})[k] || 0) > 1500) {
+        me.lbmT = me.lbmT || {}; me.lbmT[k] = Date.now();
         const o = LBM[k][uid];
-        if (!o || (k == 4 ? v < o.v : v > o.v)) { LBM[k][uid] = { name: String(m.d.name || '?').slice(0, 14), v, t: Date.now() }; lbmDirty = true; }
+        const nm = String(m.d.name || '?').slice(0, 14);
+        if (!o || (k == 4 ? v < o.v : v > o.v)) { LBM[k][uid] = { name: nm, v, t: Date.now() }; lbmDirty = true; }
+        else if (o.v === v && o.name !== nm) { o.name = nm; lbmDirty = true; }
       }
     } else if (m.t === 'lbm_get') {
       ws.send(JSON.stringify({ t: 'lbm', all: { 0: lbmList(0), 2: lbmList(2), 3: lbmList(3), 4: lbmList(4) } }));
@@ -589,7 +603,7 @@ setInterval(() => {
   for (const p of players.values()) send(p.ws, msg);
 }, 250);
 
-const flushAll = () => { if (lbmDirty) { lbmDirty = false; try { fs.writeFileSync(LBM_FILE, JSON.stringify(LBM)); } catch {} } flushAcc(); if (lbDirty) { lbDirty = false; try { fs.writeFileSync(LBFILE, JSON.stringify(LB)); } catch {} } };
+const flushAll = () => { if (lbmDirty) { lbmDirty = false; try { saveJSON(LBM_FILE, LBM); } catch {} } flushAcc(); if (lbDirty) { lbDirty = false; try { saveJSON(LBFILE, LB); } catch {} } };
 for (const sg of ['SIGINT', 'SIGTERM']) process.on(sg, () => { flushAll(); process.exit(0); });
 
 const PORT = process.env.PORT || 3000;
