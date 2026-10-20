@@ -105,6 +105,7 @@ function svOver() {
   SVR.on = 0;
   const w = SVR.wave, rec = w > (SV.sbest | 0);
   if (rec) SV.sbest = w;
+  postStat(3, w);
   SVR.last = { w, k: SVR.k, c: SVR.crates };
   gain(SVR.xp + w * 10, SVR.co + w * 4);
   feed.push({ t: '☠ Fin de partie : vague ' + w + ' · ' + SVR.k + ' ennemis · ' + SVR.crates + ' caisses' + (rec ? ' · NOUVEAU RECORD !' : '') + ' (+' + (SVR.co + w * 4) + ' pièces)', l: 9 });

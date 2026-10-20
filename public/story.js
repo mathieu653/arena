@@ -77,6 +77,7 @@ function stStart() {
   stLoad(STR.retry);
 }
 function stLoad(skipIntro) {
+  STR.t0 = performance.now(); if (STR.ch == 1 && !skipIntro) { SV.stRun = 0; SV.stOk = 1; } else if (STR.ch > 1 && !SV.stOk) SV.stOk = 0;
   const c = stChap();
   setMap(STI[STR.ch - 1]);
   bots = []; SVP = []; Bu = []; DP = [];
@@ -180,6 +181,8 @@ function stNext() {
 function stClear() {
   const ch = STR.ch, last = ch >= STCH.length;
   SV.story = Math.max(SV.story | 0, ch);
+  SV.stRun = (SV.stRun || 0) + (performance.now() - (STR.t0 || performance.now())) / 1000;
+  if (last && SV.stOk) { postStat(4, SV.stRun); SV.stOk = 0; }
   gain(80 * ch, 40 * ch);
   feed.push({ t: '✔ Chapitre ' + ch + ' terminé · +' + 40 * ch + ' pièces', l: 6 });
   STR.ph = 'outro'; me.hp = CH[me.c].hp;

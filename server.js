@@ -34,6 +34,14 @@ let LB = {}, lbDirty = false;
 try { LB = JSON.parse(fs.readFileSync(LBFILE, 'utf8')); } catch {}
 for (const u in LB) { const e = LB[u]; if (e && !e.v) { e.s = 700 + Math.max(0, num(e.best || e.rr)); e.v = 2; delete e.best; delete e.rr; lbDirty = true; } } // ancien format : Radiant uniquement
 for (const u in LB) { const e = LB[u]; if (e && e.v === 2) { const o = num(e.s), r = Math.floor(o / 100); e.s = r >= 7 ? 2200 + (o - 700) : r * 300 + (o % 100); e.v = 3; lbDirty = true; } } // v2 -> v3 : 3 stades par rang
+// Classements par mode : 0 = kills (classique), 2 = dégâts boss (événement), 3 = vagues (survivant), 4 = temps histoire (s, plus bas = mieux)
+const LBM_FILE = path.join(DATA, 'leaderboard_modes.json');
+let LBM = { 0: {}, 2: {}, 3: {}, 4: {} };
+try { const o = JSON.parse(fs.readFileSync(LBM_FILE, 'utf8')); for (const k in LBM) if (o[k]) LBM[k] = o[k]; } catch {}
+let lbmDirty = false;
+const LBM_MAX = { 0: 300, 2: 5e7, 3: 9999, 4: 864000 };
+const lbmList = (k) => Object.values(LBM[k]).sort((a, b) => (k == 4 ? a.v - b.v : b.v - a.v) || a.t - b.t).slice(0, 10).map((e) => ({ n: e.name, v: e.v }));
+setInterval(() => { if (lbmDirty) { lbmDirty = false; try { fs.writeFileSync(LBM_FILE, JSON.stringify(LBM)); } catch {} } }, 30000);
 setInterval(() => { if (lbDirty) { lbDirty = false; try { fs.writeFileSync(LBFILE, JSON.stringify(LB)); } catch {} } }, 30000);
 
 
@@ -500,6 +508,15 @@ wss.on('connection', (ws, req) => {
         else delete LB[uid];
         lbDirty = true;
       }
+    } else if (m.t === 'lbm_post' && m.d) {
+      const uid = String(m.d.uid || '').slice(0, 24).replace(/[^\w-]/g, ''), k = m.d.m | 0, v = Math.round(num(m.d.v));
+      if (uid && LBM[k] && v > 0 && v <= LBM_MAX[k] && !(k == 4 && v < 60) && Date.now() - (me.lbmT || 0) > 1500) {
+        me.lbmT = Date.now();
+        const o = LBM[k][uid];
+        if (!o || (k == 4 ? v < o.v : v > o.v)) { LBM[k][uid] = { name: String(m.d.name || '?').slice(0, 14), v, t: Date.now() }; lbmDirty = true; }
+      }
+    } else if (m.t === 'lbm_get') {
+      ws.send(JSON.stringify({ t: 'lbm', all: { 0: lbmList(0), 2: lbmList(2), 3: lbmList(3), 4: lbmList(4) } }));
     } else if (m.t === 'lb_get') {
       const list = Object.values(LB).sort((a, b) => b.s - a.s || a.t - b.t).slice(0, 10).map((e) => ({ n: e.name, r: e.s, b: e.s }));
       ws.send(JSON.stringify({ t: 'lb', list }));
@@ -572,7 +589,7 @@ setInterval(() => {
   for (const p of players.values()) send(p.ws, msg);
 }, 250);
 
-const flushAll = () => { flushAcc(); if (lbDirty) { lbDirty = false; try { fs.writeFileSync(LBFILE, JSON.stringify(LB)); } catch {} } };
+const flushAll = () => { if (lbmDirty) { lbmDirty = false; try { fs.writeFileSync(LBM_FILE, JSON.stringify(LBM)); } catch {} } flushAcc(); if (lbDirty) { lbDirty = false; try { fs.writeFileSync(LBFILE, JSON.stringify(LB)); } catch {} } };
 for (const sg of ['SIGINT', 'SIGTERM']) process.on(sg, () => { flushAll(); process.exit(0); });
 
 const PORT = process.env.PORT || 3000;
