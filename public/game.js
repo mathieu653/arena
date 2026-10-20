@@ -442,7 +442,7 @@ function netAcc(t,d){d=d||{};
 if(t=='acc_no'){feed.push({t:d.e||'Connexion refusée',l:6});if(d.bad){ACT={u:'',tok:''};actStore()}return}
 ACT={u:d.u,tok:d.tok||ACT.tok};actStore();
 if(!d.created&&d.sv&&d.sv.rk&&(!d.tk||!actLoaded)){const md=SV.mode;Object.assign(SV,d.sv);SV.mode=md;SV.bought=SV.bought||[];SV.gs=SV.gs||[];SV.packs=SV.packs||[];SV.eq=SV.eq||{}}
-actLoaded=1;SV.uid='a_'+d.u;SV.br=Math.max(SV.br|0,(SV.rk.r|0));
+passSeasonFix();actLoaded=1;SV.uid='a_'+d.u;SV.br=Math.max(SV.br|0,(SV.rk.r|0));
 try{localStorage.setItem('arena_sv3',JSON.stringify(SV))}catch(e){}
 if(!d.tk){feed.push({t:d.created?'Compte « '+d.u+' » créé : ta progression est sauvegardée ✔':'Connecté à « '+d.u+' » : sauvegarde chargée ✔',l:6});actPush()}
 pres();postLB()}
@@ -456,10 +456,15 @@ else if(i==1){let code='';try{code=btoa(unescape(encodeURIComponent(JSON.stringi
 else{const v=prompt('Colle ici ton code de sauvegarde');if(!v)return;let o=null;try{o=JSON.parse(decodeURIComponent(escape(atob(v.trim()))))}catch(e){}
 if(!o||typeof o!='object'||!o.rk){feed.push({t:'Code de sauvegarde invalide',l:5});return}
 if(!confirm('Remplacer ta progression actuelle par cette sauvegarde ?'))return;
-const uid=SV.uid,md=SV.mode;Object.assign(SV,o);SV.uid=uid;SV.mode=md;SV.br=Math.max(SV.br|0,(SV.rk.r|0));save();actPush();pres();postLB();feed.push({t:'Sauvegarde importée ✔',l:5})}}
+const uid=SV.uid,md=SV.mode;Object.assign(SV,o);SV.uid=uid;SV.mode=md;SV.br=Math.max(SV.br|0,(SV.rk.r|0));passSeasonFix();save();actPush();pres();postLB();feed.push({t:'Sauvegarde importée ✔',l:5})}}
 const tier=()=>Math.min(TIERS,Math.floor(SV.xp/100));
 const owned=i=>!(SV.rc||[]).includes(i)&&(SV.bought.includes(i)||(PASSCH[i]!=null&&tier()>=PASSCH[i])||(CH[i].sec==1&&((SV.bu||[]).includes(i)||(CH[i].n=='Tong Tong Sahur'&&SV.xs==1)))||(CH[i].sec==2&&SV.xc>0));
 const ownedSkin=i=>i==0||(!(SV.rs||[]).includes(i)&&((ST[i]!=null&&tier()>=ST[i])||(!!SKINS[i].rk&&(SV.br|0)>=SKINS[i].rk)||SV.gs.includes(i)));
+// Saison du Battle Pass : si SV.ps est plus ancien que PASS_SEASON, le pass repart de zéro (XP, palier, récompenses du pass).
+// Pour refaire recommencer le pass à tout le monde un jour : augmente PASS_SEASON.
+const PASS_SEASON=2;
+function passSeasonFix(){if((SV.ps|0)>=PASS_SEASON)return false;SV.ps=PASS_SEASON;SV.xp=0;SV.ct=0;if(!ownedSkin(SV.skin))SV.skin=0;return true}
+if(passSeasonFix())save();
 function reward(t){for(const i in PASSCH)if(PASSCH[i]==t)return{k:'ch',l:CH[i].n,id:+i};for(const i in ST)if(ST[i]==t)return{k:'sk',l:SKINS[i].n,id:+i};const v=t%5==0?15:3+(t%4)*2;return{k:'co',v,l:'+'+v}}
 function gain(xp,co){SV.coins+=co;SV.xp+=xp;const t=tier();while(SV.ct<t){SV.ct++;const r=reward(SV.ct);if(r.k=='co')SV.coins+=r.v;feed.push({t:'Palier '+SV.ct+' : '+(r.k=='co'?r.l+' pièces':r.l+' débloqué !'),l:6})}save()}
 const cardPos=i=>({x:24+(i%5)*184,y:140+Math.floor(i/5)*160,w:176,h:150});
