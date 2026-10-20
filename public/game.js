@@ -703,6 +703,8 @@ const ADSEC=[
  {t:()=>'+1000 pièces',c:'#8a6a1a',f:()=>admSend('coins',1000)},
  {t:()=>'-100 pièces',c:'#6a3a2a',f:()=>admSend('coins',-100)},
  {t:()=>'+100 XP',c:'#2a5a8a',f:()=>admSend('xp',100)},
+ {t:()=>'-100 XP',c:'#1f3f66',f:()=>admSend('xp',-100)},
+ {t:()=>'-1000 XP',c:'#1f3f66',f:()=>admSend('xp',-1000)},
  {t:()=>'+30 RR',c:'#6a3a9a',f:()=>admSend('rr',30)},
  {t:()=>'-30 RR',c:'#4a2a5a',f:()=>admSend('rr',-30)}]],
 ['Ajouter (donner)','#7ad0ff',[
